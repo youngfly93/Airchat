@@ -1,18 +1,24 @@
 //
-//  Item.swift
+//  ChatMessage.swift
 //  Airchat
 //
 //  Created by 杨飞 on 2025/6/18.
 //
 
 import Foundation
-import SwiftData
 
-@Model
-final class Item {
-    var timestamp: Date
+struct ChatMessage: Identifiable, Codable {
+    enum Role: String, Codable { 
+        case system, user, assistant 
+    }
     
-    init(timestamp: Date) {
-        self.timestamp = timestamp
+    let id: UUID
+    let role: Role
+    var content: String
+    
+    init(role: Role, content: String) {
+        self.id = UUID()
+        self.role = role
+        self.content = content
     }
 }
