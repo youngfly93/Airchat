@@ -1,0 +1,558 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		7516D12D2E02DBC800E6CDEE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7516D1142E02DBC700E6CDEE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7516D11B2E02DBC700E6CDEE;
+			remoteInfo = Airchat;
+		};
+		7516D1372E02DBC800E6CDEE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7516D1142E02DBC700E6CDEE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7516D11B2E02DBC700E6CDEE;
+			remoteInfo = Airchat;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		7516D11C2E02DBC700E6CDEE /* Airchat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Airchat.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7516D12C2E02DBC800E6CDEE /* AirchatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AirchatTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7516D1362E02DBC800E6CDEE /* AirchatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AirchatUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		7516D11E2E02DBC700E6CDEE /* Airchat */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Airchat;
+			sourceTree = "<group>";
+		};
+		7516D12F2E02DBC800E6CDEE /* AirchatTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AirchatTests;
+			sourceTree = "<group>";
+		};
+		7516D1392E02DBC800E6CDEE /* AirchatUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AirchatUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7516D1192E02DBC700E6CDEE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7516D1292E02DBC800E6CDEE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7516D1332E02DBC800E6CDEE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		7516D1132E02DBC700E6CDEE = {
+			isa = PBXGroup;
+			children = (
+				7516D11E2E02DBC700E6CDEE /* Airchat */,
+				7516D12F2E02DBC800E6CDEE /* AirchatTests */,
+				7516D1392E02DBC800E6CDEE /* AirchatUITests */,
+				7516D11D2E02DBC700E6CDEE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		7516D11D2E02DBC700E6CDEE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				7516D11C2E02DBC700E6CDEE /* Airchat.app */,
+				7516D12C2E02DBC800E6CDEE /* AirchatTests.xctest */,
+				7516D1362E02DBC800E6CDEE /* AirchatUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7516D11B2E02DBC700E6CDEE /* Airchat */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7516D1402E02DBC800E6CDEE /* Build configuration list for PBXNativeTarget "Airchat" */;
+			buildPhases = (
+				7516D1182E02DBC700E6CDEE /* Sources */,
+				7516D1192E02DBC700E6CDEE /* Frameworks */,
+				7516D11A2E02DBC700E6CDEE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7516D11E2E02DBC700E6CDEE /* Airchat */,
+			);
+			name = Airchat;
+			packageProductDependencies = (
+			);
+			productName = Airchat;
+			productReference = 7516D11C2E02DBC700E6CDEE /* Airchat.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7516D12B2E02DBC800E6CDEE /* AirchatTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7516D1432E02DBC800E6CDEE /* Build configuration list for PBXNativeTarget "AirchatTests" */;
+			buildPhases = (
+				7516D1282E02DBC800E6CDEE /* Sources */,
+				7516D1292E02DBC800E6CDEE /* Frameworks */,
+				7516D12A2E02DBC800E6CDEE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7516D12E2E02DBC800E6CDEE /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7516D12F2E02DBC800E6CDEE /* AirchatTests */,
+			);
+			name = AirchatTests;
+			packageProductDependencies = (
+			);
+			productName = AirchatTests;
+			productReference = 7516D12C2E02DBC800E6CDEE /* AirchatTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7516D1352E02DBC800E6CDEE /* AirchatUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7516D1462E02DBC800E6CDEE /* Build configuration list for PBXNativeTarget "AirchatUITests" */;
+			buildPhases = (
+				7516D1322E02DBC800E6CDEE /* Sources */,
+				7516D1332E02DBC800E6CDEE /* Frameworks */,
+				7516D1342E02DBC800E6CDEE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7516D1382E02DBC800E6CDEE /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7516D1392E02DBC800E6CDEE /* AirchatUITests */,
+			);
+			name = AirchatUITests;
+			packageProductDependencies = (
+			);
+			productName = AirchatUITests;
+			productReference = 7516D1362E02DBC800E6CDEE /* AirchatUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		7516D1142E02DBC700E6CDEE /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					7516D11B2E02DBC700E6CDEE = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					7516D12B2E02DBC800E6CDEE = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 7516D11B2E02DBC700E6CDEE;
+					};
+					7516D1352E02DBC800E6CDEE = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 7516D11B2E02DBC700E6CDEE;
+					};
+				};
+			};
+			buildConfigurationList = 7516D1172E02DBC700E6CDEE /* Build configuration list for PBXProject "Airchat" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 7516D1132E02DBC700E6CDEE;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 7516D11D2E02DBC700E6CDEE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7516D11B2E02DBC700E6CDEE /* Airchat */,
+				7516D12B2E02DBC800E6CDEE /* AirchatTests */,
+				7516D1352E02DBC800E6CDEE /* AirchatUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7516D11A2E02DBC700E6CDEE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7516D12A2E02DBC800E6CDEE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7516D1342E02DBC800E6CDEE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7516D1182E02DBC700E6CDEE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7516D1282E02DBC800E6CDEE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7516D1322E02DBC800E6CDEE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7516D12E2E02DBC800E6CDEE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7516D11B2E02DBC700E6CDEE /* Airchat */;
+			targetProxy = 7516D12D2E02DBC800E6CDEE /* PBXContainerItemProxy */;
+		};
+		7516D1382E02DBC800E6CDEE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7516D11B2E02DBC700E6CDEE /* Airchat */;
+			targetProxy = 7516D1372E02DBC800E6CDEE /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		7516D13E2E02DBC800E6CDEE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 5SAM7RT8QQ;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.3;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		7516D13F2E02DBC800E6CDEE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 5SAM7RT8QQ;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.3;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		7516D1412E02DBC800E6CDEE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Airchat/Airchat.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5SAM7RT8QQ;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = afei.Airchat;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		7516D1422E02DBC800E6CDEE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Airchat/Airchat.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5SAM7RT8QQ;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = afei.Airchat;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		7516D1442E02DBC800E6CDEE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5SAM7RT8QQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = afei.AirchatTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Airchat.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Airchat";
+			};
+			name = Debug;
+		};
+		7516D1452E02DBC800E6CDEE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5SAM7RT8QQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = afei.AirchatTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Airchat.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Airchat";
+			};
+			name = Release;
+		};
+		7516D1472E02DBC800E6CDEE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5SAM7RT8QQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = afei.AirchatUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = Airchat;
+			};
+			name = Debug;
+		};
+		7516D1482E02DBC800E6CDEE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5SAM7RT8QQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = afei.AirchatUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = Airchat;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		7516D1172E02DBC700E6CDEE /* Build configuration list for PBXProject "Airchat" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7516D13E2E02DBC800E6CDEE /* Debug */,
+				7516D13F2E02DBC800E6CDEE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7516D1402E02DBC800E6CDEE /* Build configuration list for PBXNativeTarget "Airchat" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7516D1412E02DBC800E6CDEE /* Debug */,
+				7516D1422E02DBC800E6CDEE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7516D1432E02DBC800E6CDEE /* Build configuration list for PBXNativeTarget "AirchatTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7516D1442E02DBC800E6CDEE /* Debug */,
+				7516D1452E02DBC800E6CDEE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7516D1462E02DBC800E6CDEE /* Build configuration list for PBXNativeTarget "AirchatUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7516D1472E02DBC800E6CDEE /* Debug */,
+				7516D1482E02DBC800E6CDEE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 7516D1142E02DBC700E6CDEE /* Project object */;
+}
