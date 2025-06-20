@@ -72,6 +72,12 @@ struct ChatWindow: View {
             }
             return .ignored
         }
+        .sheet(isPresented: $vm.showModelSelection) {
+            ModelSelectionView(
+                modelConfig: vm.modelConfig,
+                isPresented: $vm.showModelSelection
+            )
+        }
     }
     
     private var headerView: some View {
@@ -82,6 +88,24 @@ struct ChatWindow: View {
             Spacer()
             
             HStack(spacing: 12) {
+                Button(action: {
+                    vm.showModelSelection = true
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "cpu")
+                            .font(.system(size: 12, weight: .medium))
+                        Text(vm.modelConfig.selectedModel.name)
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+                    }
+                    .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                
                 Button(action: {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                         isCollapsed = true
@@ -211,8 +235,8 @@ struct ChatWindow: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 if message.role == .assistant {
-                    // Show reasoning first if available
-                    if let reasoning = message.reasoning, !reasoning.isEmpty {
+                    // Show reasoning first if available (only for supported models)
+                    if let reasoning = message.reasoning, !reasoning.isEmpty, vm.modelConfig.selectedModel.supportsReasoning {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 6) {
                                 Image(systemName: "lightbulb")

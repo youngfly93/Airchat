@@ -31,6 +31,9 @@ final class ArkChatAPI {
     }
     private let url = URL(string: "https://openrouter.ai/api/v1/chat/completions")!
     
+    // Model configuration
+    var selectedModel: String = "google/gemini-2.5-pro"
+    
     struct Payload: Codable {
         let model: String
         let messages: [APIMessage]
@@ -69,7 +72,7 @@ final class ArkChatAPI {
         }
     }
     
-    func send(messages: [ChatMessage], stream: Bool = true) async throws -> AsyncThrowingStream<StreamingChunk, Error> {
+    func send(messages: [ChatMessage], stream: Bool = true, model: String? = nil) async throws -> AsyncThrowingStream<StreamingChunk, Error> {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -89,7 +92,13 @@ final class ArkChatAPI {
             return APIMessage(role: message.role.rawValue, content: apiContent)
         }
         
-        let payload = Payload(model: "google/gemini-2.5-pro", messages: apiMessages, stream: stream, include_reasoning: true)
+        // Use provided model or default to selected model
+        let modelToUse = model ?? selectedModel
+        
+        // Determine if this model supports reasoning
+        let supportsReasoning = modelToUse.contains("gemini")
+        
+        let payload = Payload(model: modelToUse, messages: apiMessages, stream: stream, include_reasoning: supportsReasoning)
         request.httpBody = try JSONEncoder().encode(payload)
         
         let (bytes, response) = try await URLSession.shared.bytes(for: request)

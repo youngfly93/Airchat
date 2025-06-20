@@ -17,10 +17,12 @@ final class ChatVM: ObservableObject {
     @Published var selectedImages: [AttachedImage] = []
     @Published var isLoading = false
     @Published var lastMessageUpdateTime = Date()
+    @Published var showModelSelection = false
     
     private let api = ArkChatAPI()
     private var scrollUpdateTimer: Timer?
     private let pasteboardMonitor = PasteboardMonitor()
+    let modelConfig = ModelConfig()
     
     func send() {
         guard !composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedImages.isEmpty else { return }
@@ -55,6 +57,9 @@ final class ChatVM: ObservableObject {
         
         Task {
             do {
+                // Update API with selected model
+                api.selectedModel = modelConfig.selectedModel.id
+                
                 for try await chunk in try await api.send(messages: messages, stream: true) {
                     appendOrUpdateAssistant(chunk)
                 }
