@@ -74,16 +74,13 @@ extension KeychainHelper {
     
     var apiKey: String? {
         get {
-            // Clear any old keychain data and use the new key
-            _ = delete(for: Self.apiKeyAccount)
+            // First try to load from keychain
+            if let storedKey = loadString(for: Self.apiKeyAccount) {
+                return storedKey
+            }
             
-            // Use the new valid API key
-            let currentKey = "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"
-            
-            // Save the new key to keychain
-            _ = saveString(currentKey, for: Self.apiKeyAccount)
-            
-            return currentKey
+            // No API key found - user needs to set one
+            return nil
         }
         set {
             if let newValue = newValue {
@@ -91,6 +88,18 @@ extension KeychainHelper {
             } else {
                 _ = delete(for: Self.apiKeyAccount)
             }
+        }
+    }
+    
+    // Method to set initial API key securely
+    func setInitialAPIKey() {
+        // Only set if no key exists
+        if apiKey == nil {
+            // For security, API key should be set through user preferences or environment
+            // TODO: Implement secure API key input mechanism
+            print("⚠️ No API key found. Please set your OpenRouter API key through the app settings.")
+        } else {
+            print("✅ API key already configured")
         }
     }
 }

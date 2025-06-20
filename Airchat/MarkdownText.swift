@@ -134,32 +134,30 @@ struct MarkdownText: View {
                 .padding(.vertical, 2)
             
         case .listItem:
-            HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
                 Text("•")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.secondary)
-                    .frame(width: 8)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.accentColor)
+                    .frame(width: 12, alignment: .center)
                 
-                Text(element.content)
-                    .font(.system(size: 14))
-                    .foregroundColor(.primary)
+                Text(attributedString(from: parseInlineMarkdown(element.content)))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .padding(.leading, 8)
             
         case .numberedListItem:
-            HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
                 Text("\(element.number).")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .frame(minWidth: 20, alignment: .trailing)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.accentColor)
+                    .frame(minWidth: 24, alignment: .trailing)
                 
-                Text(element.content)
-                    .font(.system(size: 14))
-                    .foregroundColor(.primary)
+                Text(attributedString(from: parseInlineMarkdown(element.content)))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .padding(.leading, 8)
             
         case .blockquote:
             HStack(alignment: .top, spacing: 12) {
@@ -193,7 +191,14 @@ struct MarkdownText: View {
                     .textSelection(.enabled)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.thinMaterial)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.accentColor.opacity(0.08))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.accentColor.opacity(0.15), lineWidth: 0.5)
+                            )
+                    )
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .padding(.vertical, 4)
@@ -335,19 +340,30 @@ private func parseMarkdown(_ text: String) -> [MarkdownElement] {
                 number: 0
             ))
         }
-        // Numbered list items
-        else if let match = line.range(of: #"^\d+\.\s+"#, options: .regularExpression) {
+        // Numbered headers (e.g., "1. 介绍", "2. 创作与生成")
+        else if let match = line.range(of: #"^\d+\.\s+[^\s].*"#, options: .regularExpression) {
             let content = String(line[match.upperBound...])
-            elements.append(MarkdownElement(
-                type: .numberedListItem,
-                content: content,
-                language: "",
-                number: numberedListCounter
-            ))
-            numberedListCounter += 1
+            // If the content is short (likely a header) or looks like a title, treat as header
+            if content.count <= 20 || !content.contains("：") && !content.contains(":") && !content.contains("。") {
+                elements.append(MarkdownElement(
+                    type: .header2, // Use header2 for numbered sections
+                    content: String(line), // Include the number in the header
+                    language: "",
+                    number: 0
+                ))
+            } else {
+                // Treat as numbered list item
+                elements.append(MarkdownElement(
+                    type: .numberedListItem,
+                    content: content,
+                    language: "",
+                    number: numberedListCounter
+                ))
+                numberedListCounter += 1
+            }
         }
-        // List items
-        else if line.hasPrefix("- ") || line.hasPrefix("* ") {
+        // List items (support -, *, and • characters)
+        else if line.hasPrefix("- ") || line.hasPrefix("* ") || line.hasPrefix("• ") {
             elements.append(MarkdownElement(
                 type: .listItem,
                 content: String(line.dropFirst(2)),

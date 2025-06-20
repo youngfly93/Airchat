@@ -65,6 +65,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var menu: NSMenu!
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Initialize API key securely
+        KeychainHelper.shared.setInitialAPIKey()
+        
         // Hide dock icon
         NSApp.setActivationPolicy(.accessory)
         

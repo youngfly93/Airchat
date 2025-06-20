@@ -216,7 +216,14 @@ struct ChatWindow: View {
                                 .foregroundColor(.secondary)
                                 .textSelection(.enabled)
                                 .padding(10)
-                                .background(.thinMaterial)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.accentColor.opacity(0.08))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.accentColor.opacity(0.15), lineWidth: 0.5)
+                                        )
+                                )
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                         .padding(.bottom, 4)
