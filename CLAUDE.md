@@ -4,21 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a macOS floating window AI chat application built with SwiftUI and SwiftData. The app is designed to be a menu bar application that provides a floating chat interface for interacting with AI via the ARK API.
+This is a fully implemented macOS floating chat window application built with SwiftUI. The app lives in the menu bar and provides a beautiful floating chat interface for interacting with AI via the Gemini API (google/gemini-2.5-pro) through OpenRouter.
 
 ## Architecture
 
-The application follows a typical SwiftUI + SwiftData architecture:
-- **AirchatApp.swift**: Main app entry point with SwiftData model container setup
-- **ContentView.swift**: Default template view (to be replaced with chat interface)
-- **Item.swift**: SwiftData model (template - will be replaced with ChatMessage model)
+The application follows a SwiftUI + MVVM architecture:
 
-The intended architecture (based on guide.md) includes:
-- Status bar menu application (no dock icon)
-- Floating NSPanel chat window
-- SwiftUI-based chat interface with message bubbles
-- ARK API integration for AI chat
-- Observable ViewModel pattern for state management
+### Core Components
+- **AirchatApp.swift**: Main app entry point with NSApplicationDelegateAdaptor, manages status bar item and floating NSPanel window
+- **ChatWindow.swift**: SwiftUI chat interface with collapsible/expandable states, glass morphism design
+- **ChatVM.swift**: ViewModel managing chat state, message history, and API interactions
+- **ArkChatAPI.swift**: API client implementing streaming responses via Server-Sent Events (note: filename reflects legacy ARK API, but now uses Gemini)
+- **KeychainHelper.swift**: Generic keychain wrapper for secure API key storage
+- **VisualEffectView.swift**: NSViewRepresentable wrapper for macOS visual effects
+- **Item.swift**: Contains ChatMessage model (note: filename is misleading)
+
+### Key Architectural Patterns
+- Status bar application (no dock icon) using NSStatusBar
+- Floating NSPanel with custom window masking for rounded corners
+- Observable ViewModel pattern with @Published properties
+- AsyncThrowingStream for streaming API responses
+- Secure credential storage using Keychain Services
 
 ## Development Commands
 
@@ -32,41 +38,74 @@ xcodebuild -project Airchat.xcodeproj -scheme Airchat build
 
 # Run tests
 xcodebuild -project Airchat.xcodeproj -scheme Airchat test
+
+# Clean build
+xcodebuild -project Airchat.xcodeproj -scheme Airchat clean
 ```
 
-### Testing
-- Unit tests: `AirchatTests/AirchatTests.swift`
-- UI tests: `AirchatUITests/AirchatUITests.swift` and `AirchatUITestsLaunchTests.swift`
+### Running the App
+- Build and run in Xcode (⌘R)
+- App appears in menu bar (top right)
+- Click menu bar icon to show/hide chat window
 
-## Key Configuration
+## API Integration Details
 
-- **Target**: macOS 14.0+
-- **Language**: Swift 5.0
-- **Framework**: SwiftUI + SwiftData
-- **Development Team**: 5SAM7RT8QQ
-- **Bundle ID**: afei.Airchat
-- **Capabilities**: App Sandbox enabled, Hardened Runtime
+### Gemini API Configuration
+- **Endpoint**: https://openrouter.ai/api/v1/chat/completions
+- **Model**: google/gemini-2.5-pro
+- **Authentication**: Bearer token stored in Keychain
+- **Response Format**: Server-Sent Events (SSE) for streaming via OpenRouter
 
-## API Integration
+### API Response Handling
+- Uses URLSession with streaming support
+- Parses SSE format with "data:" prefixed lines
+- Handles partial JSON chunks and token accumulation
+- Implements proper error handling for network failures
 
-The project is designed to integrate with ARK API:
-- **Endpoint**: https://ark.cn-beijing.volces.com/api/v3/chat/completions
-- **Model**: deepseek-v3-250324
-- **Authentication**: Bearer token (should be stored in Keychain)
-- **Features**: Streaming response support via Server-Sent Events
+## Window Management
 
-## Implementation Notes
+The floating window implementation uses several advanced techniques:
+- NSPanel with `.floating` level for always-on-top behavior
+- Custom window mask creation for rounded corners
+- Automatic positioning below status bar item
+- Smooth animations between collapsed (60x60) and expanded (360x520) states
+- Glass morphism effects using NSVisualEffectView
 
-When implementing the chat functionality:
-- Replace the default SwiftData Item model with ChatMessage
-- Implement NSStatusBar integration for menu bar presence
-- Use NSPanel with floating level for the chat window
-- Implement streaming chat responses with AsyncStream
-- Store API keys securely in Keychain (never hardcode)
-- Follow the architectural pattern outlined in guide.md
+## State Management
+
+The app uses a centralized ChatVM for state:
+- `messages`: Array of ChatMessage objects
+- `currentInput`: User's input text
+- `isLoading`: Loading state during API calls
+- `isCollapsed`: Window collapse state
+- Methods for sending messages, clearing chat, and toggling window state
 
 ## Security Considerations
 
-- API keys must be stored in Keychain, not hardcoded
-- App Sandbox should only enable network client capabilities
-- Use proper code signing for distribution
+- API keys are stored in Keychain (service: "com.afei.airchat", account: "ark_api_key")
+- App Sandbox enabled with network client capability only
+- Hardened Runtime enabled for notarization
+- Note: Remove hardcoded fallback API key in KeychainHelper.swift before production (currently contains OpenRouter key for Gemini access)
+
+## Testing
+
+The project uses Swift Testing framework (Xcode 16+):
+- Test files exist but need implementation
+- Run tests with: `⌘U` in Xcode or command line build
+
+## Common Development Tasks
+
+### Adding New Features
+1. UI changes go in ChatWindow.swift
+2. State/logic changes go in ChatVM.swift
+3. API modifications go in ArkChatAPI.swift
+
+### Debugging Streaming Responses
+- Check console output for SSE parsing
+- Verify API key is correctly stored/retrieved
+- Monitor network traffic in Xcode's Network instrument
+
+### Window Positioning Issues
+- Window position is calculated in AirchatApp.swift
+- Adjust `windowOrigin` calculation if needed
+- Consider multiple display scenarios

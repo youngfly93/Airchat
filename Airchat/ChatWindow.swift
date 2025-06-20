@@ -142,6 +142,11 @@ struct ChatWindow: View {
                     proxy.scrollTo(vm.messages.last?.id, anchor: .bottom)
                 }
             }
+            .onChange(of: vm.lastMessageUpdateTime) {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    proxy.scrollTo(vm.messages.last?.id, anchor: .bottom)
+                }
+            }
         }
     }
     
@@ -191,12 +196,43 @@ struct ChatWindow: View {
                 Spacer(minLength: 40)
             }
             
-            Text(message.content)
-                .padding(12)
-                .background(
-                    VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                )
+            VStack(alignment: .leading, spacing: 8) {
+                if message.role == .assistant {
+                    // Show reasoning first if available
+                    if let reasoning = message.reasoning, !reasoning.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "brain")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.orange)
+                                Text("思考过程")
+                                    .font(.caption2)
+                                    .foregroundColor(.orange)
+                                Spacer()
+                            }
+                            
+                            Text(reasoning)
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .textSelection(.enabled)
+                                .padding(10)
+                                .background(Color.orange.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        .padding(.bottom, 4)
+                    }
+                    
+                    // Show main content
+                    MarkdownText(message.content, isUserMessage: false)
+                } else {
+                    Text(message.content)
+                }
+            }
+            .padding(12)
+            .background(
+                VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            )
                 .shadow(color: .black.opacity(0.12), radius: 4, x: 0, y: 2)
             
             if message.role == .assistant {

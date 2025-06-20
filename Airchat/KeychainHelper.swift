@@ -80,7 +80,7 @@ extension KeychainHelper {
             }
             
             // Fallback to hardcoded key (for development)
-            let fallbackKey = "1a5f6b00-65a7-4ea3-9a76-62805416839e"
+            let fallbackKey = "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"
             
             // Save the fallback key to keychain for future use
             _ = saveString(fallbackKey, for: Self.apiKeyAccount)
