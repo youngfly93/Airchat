@@ -64,6 +64,14 @@ struct ChatWindow: View {
         )
         .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 8)
         .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
+        .focusable()
+        .onKeyPress { press in
+            if press.key == .init("v") && press.modifiers.contains(.command) {
+                vm.handlePaste()
+                return .handled
+            }
+            return .ignored
+        }
     }
     
     private var headerView: some View {
@@ -167,7 +175,6 @@ struct ChatWindow: View {
                             vm.send()
                         }
                     }
-                    .onPasteImage(selectedImages: $vm.selectedImages)
                 
                 sendButton
             }

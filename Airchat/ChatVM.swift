@@ -20,6 +20,7 @@ final class ChatVM: ObservableObject {
     
     private let api = ArkChatAPI()
     private var scrollUpdateTimer: Timer?
+    private let pasteboardMonitor = PasteboardMonitor()
     
     func send() {
         guard !composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedImages.isEmpty else { return }
@@ -120,6 +121,45 @@ final class ChatVM: ObservableObject {
         messages = [ChatMessage(role: .system, content: "你是人工智能助手.")]
         scrollUpdateTimer?.invalidate()
         scrollUpdateTimer = nil
+    }
+    
+    func handlePaste() {
+        if let image = pasteboardMonitor.getImageFromPasteboard() {
+            processImage(image)
+        }
+    }
+    
+    private func processImage(_ nsImage: NSImage) {
+        guard let tiffData = nsImage.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData) else { return }
+        
+        // Convert to PNG for better compatibility
+        guard let pngData = bitmap.representation(using: .png, properties: [:]) else { return }
+        
+        // Check size and compress if needed
+        let maxSize = 5 * 1024 * 1024 // 5MB
+        let imageData: Data
+        
+        if pngData.count > maxSize {
+            // Try JPEG compression
+            let quality = Double(maxSize) / Double(pngData.count)
+            if let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: quality]) {
+                imageData = jpegData
+            } else {
+                imageData = pngData
+            }
+        } else {
+            imageData = pngData
+        }
+        
+        // Create base64 data URL
+        let base64String = imageData.base64EncodedString()
+        let mimeType = pngData.count > maxSize ? "image/jpeg" : "image/png"
+        let dataUrl = "data:\(mimeType);base64,\(base64String)"
+        
+        // Add to selected images
+        let attachedImage = AttachedImage(url: dataUrl)
+        selectedImages.append(attachedImage)
     }
     
     deinit {
