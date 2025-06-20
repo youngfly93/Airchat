@@ -151,27 +151,33 @@ struct ChatWindow: View {
     }
     
     private var inputView: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            TextField("输入内容…", text: $vm.composing, axis: .vertical)
-                .textFieldStyle(.plain)
-                .lineLimit(1...5)
-                .padding(12)
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .onSubmit {
-                    if !vm.isLoading {
-                        vm.send()
-                    }
-                }
+        VStack(spacing: 8) {
+            // Image picker
+            ImagePickerView(selectedImages: $vm.selectedImages)
             
-            sendButton
+            HStack(alignment: .bottom, spacing: 12) {
+                TextField("输入内容…", text: $vm.composing, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...5)
+                    .padding(12)
+                    .background(.thinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .onSubmit {
+                        if !vm.isLoading {
+                            vm.send()
+                        }
+                    }
+                    .onPasteImage(selectedImages: $vm.selectedImages)
+                
+                sendButton
+            }
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
     }
     
     private var sendButton: some View {
-        let isEmpty = vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let isEmpty = vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && vm.selectedImages.isEmpty
         let isDisabled = isEmpty || vm.isLoading
         
         return Button(action: {
@@ -230,9 +236,21 @@ struct ChatWindow: View {
                     }
                     
                     // Show main content
-                    MarkdownText(message.content, isUserMessage: false)
+                    MarkdownText(message.content.displayText, isUserMessage: false)
                 } else {
-                    Text(message.content)
+                    // User message content
+                    VStack(alignment: .leading, spacing: 8) {
+                        // Show images if present
+                        if message.content.hasImages {
+                            imageGridView(for: message.content.images)
+                        }
+                        
+                        // Show text if present
+                        let text = message.content.displayText
+                        if !text.isEmpty {
+                            Text(text)
+                        }
+                    }
                 }
             }
             .padding(12)
@@ -244,6 +262,41 @@ struct ChatWindow: View {
             
             if message.role == .assistant {
                 Spacer(minLength: 40)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func imageGridView(for images: [AttachedImage]) -> some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: min(images.count, 2))
+        
+        LazyVGrid(columns: columns, spacing: 4) {
+            ForEach(images) { image in
+                AsyncImage(url: URL(string: image.url)) { asyncImage in
+                    switch asyncImage {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(maxWidth: 120, maxHeight: 120)
+                            .clipped()
+                            .cornerRadius(8)
+                    case .failure(_):
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(width: 120, height: 120)
+                            .cornerRadius(8)
+                            .overlay(
+                                Image(systemName: "photo")
+                                    .foregroundColor(.secondary)
+                            )
+                    case .empty:
+                        ProgressView()
+                            .frame(width: 120, height: 120)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
             }
         }
     }

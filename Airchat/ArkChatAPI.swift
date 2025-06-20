@@ -33,9 +33,40 @@ final class ArkChatAPI {
     
     struct Payload: Codable {
         let model: String
-        let messages: [ChatMessage]
+        let messages: [APIMessage]
         let stream: Bool
         let include_reasoning: Bool
+    }
+    
+    struct APIMessage: Codable {
+        let role: String
+        let content: APIContent
+    }
+    
+    enum APIContent: Codable {
+        case text(String)
+        case multimodal([ContentPart])
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let stringValue = try? container.decode(String.self) {
+                self = .text(stringValue)
+            } else if let arrayValue = try? container.decode([ContentPart].self) {
+                self = .multimodal(arrayValue)
+            } else {
+                throw DecodingError.typeMismatch(APIContent.self, DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Invalid content type"))
+            }
+        }
+        
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            switch self {
+            case .text(let string):
+                try container.encode(string)
+            case .multimodal(let parts):
+                try container.encode(parts)
+            }
+        }
     }
     
     func send(messages: [ChatMessage], stream: Bool = true) async throws -> AsyncThrowingStream<StreamingChunk, Error> {
@@ -46,7 +77,19 @@ final class ArkChatAPI {
         request.setValue("https://localhost:3000", forHTTPHeaderField: "HTTP-Referer")
         request.setValue("Airchat", forHTTPHeaderField: "X-Title")
         
-        let payload = Payload(model: "google/gemini-2.5-pro", messages: messages, stream: stream, include_reasoning: true)
+        // Convert ChatMessage to APIMessage
+        let apiMessages = messages.map { message in
+            let apiContent: APIContent
+            switch message.content {
+            case .text(let text):
+                apiContent = .text(text)
+            case .multimodal(let parts):
+                apiContent = .multimodal(parts)
+            }
+            return APIMessage(role: message.role.rawValue, content: apiContent)
+        }
+        
+        let payload = Payload(model: "google/gemini-2.5-pro", messages: apiMessages, stream: stream, include_reasoning: true)
         request.httpBody = try JSONEncoder().encode(payload)
         
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
