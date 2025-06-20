@@ -78,7 +78,7 @@ extension KeychainHelper {
             _ = delete(for: Self.apiKeyAccount)
             
             // Use the new valid API key
-            let currentKey = "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"
+            let currentKey = "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"
             
             // Save the new key to keychain
             _ = saveString(currentKey, for: Self.apiKeyAccount)
