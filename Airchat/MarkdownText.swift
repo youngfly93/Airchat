@@ -178,12 +178,12 @@ struct MarkdownText: View {
         case .thinking:
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    Image(systemName: "brain")
-                        .font(.system(size: 12))
-                        .foregroundColor(.orange)
+                    Image(systemName: "lightbulb")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
                     Text("思考过程")
                         .font(.caption)
-                        .foregroundColor(.orange)
+                        .foregroundColor(.secondary)
                     Spacer()
                 }
                 
@@ -193,7 +193,7 @@ struct MarkdownText: View {
                     .textSelection(.enabled)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.orange.opacity(0.1))
+                    .background(.thinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .padding(.vertical, 4)

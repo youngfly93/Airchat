@@ -74,18 +74,16 @@ extension KeychainHelper {
     
     var apiKey: String? {
         get {
-            // First try to load from keychain
-            if let storedKey = loadString(for: Self.apiKeyAccount) {
-                return storedKey
-            }
+            // Clear any old keychain data and use the new key
+            _ = delete(for: Self.apiKeyAccount)
             
-            // Fallback to hardcoded key (for development)
-            let fallbackKey = "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"
+            // Use the new valid API key
+            let currentKey = "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"
             
-            // Save the fallback key to keychain for future use
-            _ = saveString(fallbackKey, for: Self.apiKeyAccount)
+            // Save the new key to keychain
+            _ = saveString(currentKey, for: Self.apiKeyAccount)
             
-            return fallbackKey
+            return currentKey
         }
         set {
             if let newValue = newValue {

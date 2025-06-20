@@ -40,8 +40,9 @@ final class ChatVM: ObservableObject {
                 // Final scroll to bottom after completion
                 lastMessageUpdateTime = Date()
             } catch {
-                print("Error: \(error)")
                 isLoading = false
+                // Add error message to chat
+                messages.append(ChatMessage(role: .assistant, content: "抱歉，发生了错误：\(error.localizedDescription)"))
                 // Final scroll to bottom even on error
                 lastMessageUpdateTime = Date()
             }

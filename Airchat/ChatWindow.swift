@@ -81,7 +81,7 @@ struct ChatWindow: View {
                 }) {
                     Image(systemName: "minus.circle.fill")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.orange)
+                        .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
                 .frame(width: 28, height: 28)
@@ -202,12 +202,12 @@ struct ChatWindow: View {
                     if let reasoning = message.reasoning, !reasoning.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 6) {
-                                Image(systemName: "brain")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.orange)
+                                Image(systemName: "lightbulb")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.secondary)
                                 Text("思考过程")
                                     .font(.caption2)
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(.secondary)
                                 Spacer()
                             }
                             
@@ -216,7 +216,7 @@ struct ChatWindow: View {
                                 .foregroundColor(.secondary)
                                 .textSelection(.enabled)
                                 .padding(10)
-                                .background(Color.orange.opacity(0.1))
+                                .background(.thinMaterial)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                         .padding(.bottom, 4)

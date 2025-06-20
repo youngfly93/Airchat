@@ -43,11 +43,39 @@ final class ArkChatAPI {
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("https://localhost:3000", forHTTPHeaderField: "HTTP-Referer")
+        request.setValue("Airchat", forHTTPHeaderField: "X-Title")
         
         let payload = Payload(model: "google/gemini-2.5-pro", messages: messages, stream: stream, include_reasoning: true)
         request.httpBody = try JSONEncoder().encode(payload)
         
-        let (bytes, _) = try await URLSession.shared.bytes(for: request)
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        
+        // Check HTTP status code
+        if let httpResponse = response as? HTTPURLResponse {
+            if httpResponse.statusCode != 200 {
+                // Try to read error response
+                var errorMessage = "HTTP \(httpResponse.statusCode)"
+                do {
+                    var errorData = Data()
+                    for try await line in bytes.lines {
+                        if let lineData = line.data(using: .utf8) {
+                            errorData.append(lineData)
+                        }
+                    }
+                    if let errorString = String(data: errorData, encoding: .utf8) {
+                        if errorString.contains("No auth credentials found") {
+                            errorMessage = "API密钥无效或已过期，请设置有效的OpenRouter API密钥"
+                        } else {
+                            errorMessage = errorString
+                        }
+                    }
+                } catch {
+                    // Could not read error response
+                }
+                throw NSError(domain: "ArkChatAPI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+            }
+        }
         
         return AsyncThrowingStream<StreamingChunk, Error> { continuation in
             Task {
