@@ -60,6 +60,15 @@ class ModelConfig: ObservableObject {
                 pricing: AIModel.ModelPricing(input: 3.0, output: 15.0)
             ),
             AIModel(
+                id: "openai/o3",
+                name: "O3",
+                provider: "OpenAI",
+                description: "OpenAI最新思考模型，具备强大推理能力",
+                supportsReasoning: true,
+                contextWindow: 200000,
+                pricing: AIModel.ModelPricing(input: 15.0, output: 60.0)
+            ),
+            AIModel(
                 id: "openai/gpt-4o",
                 name: "GPT-4o",
                 provider: "OpenAI",

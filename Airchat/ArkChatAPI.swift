@@ -96,7 +96,7 @@ final class ArkChatAPI {
         let modelToUse = model ?? selectedModel
         
         // Determine if this model supports reasoning
-        let supportsReasoning = modelToUse.contains("gemini")
+        let supportsReasoning = modelToUse.contains("gemini") || modelToUse.contains("o3")
         
         let payload = Payload(model: modelToUse, messages: apiMessages, stream: stream, include_reasoning: supportsReasoning)
         request.httpBody = try JSONEncoder().encode(payload)
