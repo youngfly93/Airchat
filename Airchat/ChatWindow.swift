@@ -20,28 +20,26 @@ struct ChatWindow: View {
     }
     
     private var collapsedView: some View {
-        Button(action: {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                isCollapsed = false
+        Image(systemName: "bubble.left.and.bubble.right.fill")
+            .font(.title2)
+            .foregroundColor(.accentColor)
+            .frame(width: 60, height: 60)
+            .background(
+                VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .compositingGroup()
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 8)
+            .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
+            .onTapGesture(count: 2) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    isCollapsed = false
+                }
             }
-        }) {
-            Image(systemName: "bubble.left.and.bubble.right.fill")
-                .font(.title2)
-                .foregroundColor(.accentColor)
-        }
-        .buttonStyle(.plain)
-        .frame(width: 60, height: 60)
-        .background(
-            VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .compositingGroup()
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.3), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 8)
-        .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
     }
     
     private var expandedView: some View {
