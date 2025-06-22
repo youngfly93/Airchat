@@ -93,3 +93,10 @@ iOSInjectionProject/
 *.txt
 api.txt
 gemini_api.txt
+
+# macOS
+.DS_Store
+._*
+
+# Build products
+*.app

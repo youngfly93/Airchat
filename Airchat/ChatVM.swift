@@ -25,6 +25,14 @@ final class ChatVM: ObservableObject {
     private let pasteboardMonitor = PasteboardMonitor()
     let modelConfig = ModelConfig()
     
+    // 计算属性：获取最后一条助手消息的内容文本
+    var lastAssistantMessageText: String {
+        if let lastMessage = messages.last(where: { $0.role == .assistant }) {
+            return lastMessage.content.displayText
+        }
+        return ""
+    }
+    
     // 打字机效果相关
     private var pendingTokens = ""
     private var typewriterTimer: Timer?
@@ -171,6 +179,7 @@ final class ChatVM: ObservableObject {
         
         // 打字机模式下需要实时滚动跟随
         shouldScrollToBottom = true
+        lastMessageUpdateTime = Date()
     }
     
     // 移除了错误的滚动节流逻辑

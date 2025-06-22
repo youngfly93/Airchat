@@ -105,7 +105,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Set up the button
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "bubble.left.and.bubble.right", accessibilityDescription: "Airchat")
+            if let image = NSImage(named: "MenuIcon") {
+                image.size = NSSize(width: 20, height: 20)
+                // 不设置为 template，保持原始颜色
+                button.image = image
+            } else {
+                // 备用方案：使用系统图标
+                button.image = NSImage(systemSymbolName: "bubble.left.and.bubble.right", accessibilityDescription: "Airchat")
+            }
             button.action = #selector(toggleMenu)
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])

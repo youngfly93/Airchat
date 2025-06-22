@@ -82,88 +82,105 @@ struct ModelCard: View {
     let isSelected: Bool
     let onSelect: () -> Void
     
+    @State private var isHovered = false
+    
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(
+                isSelected ? Color.blue.opacity(0.1) : 
+                (isHovered ? Color.white.opacity(0.05) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(
+                        isSelected ? Color.blue.opacity(0.3) : 
+                        (isHovered ? Color.white.opacity(0.2) : Color.white.opacity(0.1)),
+                        lineWidth: isSelected ? 2 : 1
+                    )
+            )
+    }
+    
     var body: some View {
-        Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(model.name)
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if model.supportsReasoning {
-                                Image(systemName: "lightbulb.fill")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.yellow)
-                            }
-                            
-                            if isSelected {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.blue)
-                            }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(model.name)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        Spacer()
+                        
+                        if model.supportsReasoning {
+                            Image(systemName: "lightbulb.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.yellow)
                         }
                         
-                        Text(model.provider)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.1))
-                            .clipShape(Capsule())
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.blue)
+                        }
                     }
+                    
+                    Text(model.provider)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.1))
+                        .clipShape(Capsule())
+                }
+            }
+            
+            Text(model.description)
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.leading)
+            
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("上下文窗口")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(formatContextWindow(model.contextWindow))
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
                 }
                 
-                Text(model.description)
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.leading)
+                Spacer()
                 
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("上下文窗口")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        Text(formatContextWindow(model.contextWindow))
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("定价 (每1M tokens)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Text("输入: $\(model.pricing.input, specifier: "%.2f")")
                             .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundColor(.primary)
-                    }
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("定价 (每1M tokens)")
-                            .font(.caption2)
                             .foregroundColor(.secondary)
-                        HStack(spacing: 4) {
-                            Text("输入: $\(model.pricing.input, specifier: "%.2f")")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text("输出: $\(model.pricing.output, specifier: "%.2f")")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                        Text("输出: $\(model.pricing.output, specifier: "%.2f")")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(isSelected ? Color.blue.opacity(0.1) : Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(
-                                isSelected ? Color.blue.opacity(0.3) : Color.white.opacity(0.1),
-                                lineWidth: isSelected ? 2 : 1
-                            )
-                    )
-            )
         }
-        .buttonStyle(.plain)
+        .padding(16)
+        .background(cardBackground)
+        .contentShape(Rectangle()) // 确保整个区域都可以点击
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.1)) {
+                onSelect()
+            }
+        }
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovered = hovering
+            }
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
     }
     
     private func formatContextWindow(_ tokens: Int) -> String {

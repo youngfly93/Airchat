@@ -189,6 +189,20 @@ struct ChatWindow: View {
                     vm.shouldScrollToBottom = false
                 }
             }
+            // 添加一个更频繁的滚动触发器，基于最后一条消息的内容变化
+            .onChange(of: vm.lastMessageUpdateTime) { _, _ in
+                // 当正在加载时，始终滚动到底部
+                if vm.isLoading {
+                    proxy.scrollTo("BOTTOM", anchor: .bottom)
+                }
+            }
+            // 监听最后一条助手消息的内容变化
+            .onChange(of: vm.lastAssistantMessageText) { _, _ in
+                // 内容变化时滚动到底部
+                if vm.isLoading {
+                    proxy.scrollTo("BOTTOM", anchor: .bottom)
+                }
+            }
         }
     }
     
