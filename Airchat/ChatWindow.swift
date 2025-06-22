@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import MarkdownUI
 
 struct ChatWindow: View {
     @StateObject private var vm = ChatVM()
@@ -173,22 +174,19 @@ struct ChatWindow: View {
                 .padding()
             }
             .scrollBounceBehavior(.basedOnSize) // 减少弹性滚动抖动
+            .scrollIndicators(.never) // 隐藏滚动条减少干扰
             .onChange(of: vm.messages.count) {
-                // 只在新增消息时滚动，使用更平滑的动画
-                withAnimation(.easeOut(duration: 0.25)) {
+                // 新增消息时的平滑滚动
+                withAnimation(.easeOut(duration: 0.2)) {
                     proxy.scrollTo("BOTTOM", anchor: .bottom)
                 }
             }
-            .onChange(of: vm.shouldScrollToBottom) { shouldScroll in
-                // 节流滚动更新，避免每个token都触发
+            .onChange(of: vm.shouldScrollToBottom) { _, shouldScroll in
+                // 流式内容更新滚动 - 即时跟随，但避免过度动画
                 if shouldScroll {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        proxy.scrollTo("BOTTOM", anchor: .bottom)
-                    }
-                    // 重置标志位
-                    DispatchQueue.main.async {
-                        vm.shouldScrollToBottom = false
-                    }
+                    // 打字机模式下使用非动画滚动，确保跟随
+                    proxy.scrollTo("BOTTOM", anchor: .bottom)
+                    vm.shouldScrollToBottom = false
                 }
             }
         }
@@ -279,7 +277,10 @@ struct ChatWindow: View {
                     }
                     
                     // Show main content
-                    MarkdownText(message.content.displayText, isUserMessage: false)
+                    Markdown(message.content.displayText)
+                        .markdownTheme(.airchat)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     // User message content
                     VStack(alignment: .leading, spacing: 8) {

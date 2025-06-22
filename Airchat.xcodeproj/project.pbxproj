@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		75F092192E063D1E006638C7 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 75F092182E063D1E006638C7 /* KeyboardShortcuts */; };
+		75F092222E064000006638C7 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 75F092212E064000006638C7 /* MarkdownUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				75F092192E063D1E006638C7 /* KeyboardShortcuts in Frameworks */,
+				75F092222E064000006638C7 /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +120,7 @@
 			name = Airchat;
 			packageProductDependencies = (
 				75F092182E063D1E006638C7 /* KeyboardShortcuts */,
+				75F092212E064000006638C7 /* MarkdownUI */,
 			);
 			productName = Airchat;
 			productReference = 7516D11C2E02DBC700E6CDEE /* Airchat.app */;
@@ -203,6 +206,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				75F092172E063D1E006638C7 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+				75F092202E064000006638C7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7516D11D2E02DBC700E6CDEE /* Products */;
@@ -572,6 +576,14 @@
 				minimumVersion = 2.3.0;
 			};
 		};
+		75F092202E064000006638C7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -579,6 +591,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 75F092172E063D1E006638C7 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
 			productName = KeyboardShortcuts;
+		};
+		75F092212E064000006638C7 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 75F092202E064000006638C7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -25,10 +25,13 @@ final class ChatVM: ObservableObject {
     private let pasteboardMonitor = PasteboardMonitor()
     let modelConfig = ModelConfig()
     
-    // Token节流相关
+    // 打字机效果相关
     private var pendingTokens = ""
-    private var tokenFlushTimer: Timer?
-    private let tokenFlushInterval: TimeInterval = 0.05 // 50ms节流
+    private var typewriterTimer: Timer?
+    private let typewriterSpeed: TimeInterval = 0.02 // 20ms每字符，打字机速度
+    private var isTypewriting = false
+    
+    // 移除了滚动节流，打字机模式需要实时跟随
     
     func send() {
         guard !composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedImages.isEmpty else { return }
@@ -70,22 +73,28 @@ final class ChatVM: ObservableObject {
                     appendOrUpdateAssistant(chunk)
                 }
                 
-                // 确保最后的tokens都被刷新
-                flushPendingTokens()
+                // 确保最后的字符都被显示
+                flushRemainingCharacters()
+                stopTypewriterEffect()
                 isLoading = false
                 
-                // 最终滚动到底部
-                shouldScrollToBottom = true
+                // 最终滚动到底部 - 确保在主线程执行
+                Task { @MainActor in
+                    shouldScrollToBottom = true
+                }
             } catch {
-                // 确保错误情况下也刷新pending tokens
-                flushPendingTokens()
+                // 确保错误情况下也显示所有字符
+                flushRemainingCharacters()
+                stopTypewriterEffect()
                 isLoading = false
                 
                 // Add error message to chat
                 messages.append(ChatMessage(role: .assistant, content: "抱歉，发生了错误：\(error.localizedDescription)"))
                 
-                // 滚动到底部显示错误消息
-                shouldScrollToBottom = true
+                // 滚动到底部显示错误消息 - 确保在主线程执行
+                Task { @MainActor in
+                    shouldScrollToBottom = true
+                }
             }
         }
     }
@@ -100,9 +109,10 @@ final class ChatVM: ObservableObject {
             ))
         }
         
-        // 累积token而不是立即更新UI
+        // 立即处理新token，启动打字机效果
         if let content = chunk.content {
             pendingTokens += content
+            startTypewriterEffect()
         }
         
         // 处理reasoning（推理过程）
@@ -112,20 +122,70 @@ final class ChatVM: ObservableObject {
             }
             messages[messages.count - 1].reasoning! += reasoning
         }
+    }
+    
+    // 启动打字机效果
+    private func startTypewriterEffect() {
+        guard !isTypewriting && !pendingTokens.isEmpty else { return }
         
-        // 节流更新UI - 每50ms批量处理累积的tokens
-        tokenFlushTimer?.invalidate()
-        tokenFlushTimer = Timer.scheduledTimer(withTimeInterval: tokenFlushInterval, repeats: false) { _ in
+        isTypewriting = true
+        typewriterTimer?.invalidate()
+        
+        typewriterTimer = Timer.scheduledTimer(withTimeInterval: typewriterSpeed, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                self.flushPendingTokens()
+                self?.typeNextCharacter()
             }
         }
     }
     
-    private func flushPendingTokens() {
+    // 打字机逐字符显示
+    private func typeNextCharacter() {
+        guard !pendingTokens.isEmpty else {
+            stopTypewriterEffect()
+            return
+        }
+        
+        // 取出第一个字符
+        let nextChar = String(pendingTokens.removeFirst())
+        
+        // 立即更新UI显示字符
+        if let lastIndex = messages.lastIndex(where: { $0.role == .assistant }) {
+            switch messages[lastIndex].content {
+            case .text(let existingText):
+                messages[lastIndex].content = .text(existingText + nextChar)
+            case .multimodal(let parts):
+                var updatedParts = parts
+                if let lastTextIndex = updatedParts.lastIndex(where: { 
+                    if case .text = $0 { return true }
+                    return false 
+                }) {
+                    if case .text(let existingText) = updatedParts[lastTextIndex] {
+                        updatedParts[lastTextIndex] = .text(existingText + nextChar)
+                    }
+                } else {
+                    updatedParts.append(.text(nextChar))
+                }
+                messages[lastIndex].content = .multimodal(updatedParts)
+            }
+        }
+        
+        // 打字机模式下需要实时滚动跟随
+        shouldScrollToBottom = true
+    }
+    
+    // 移除了错误的滚动节流逻辑
+    
+    // 停止打字机效果
+    private func stopTypewriterEffect() {
+        isTypewriting = false
+        typewriterTimer?.invalidate()
+        typewriterTimer = nil
+    }
+    
+    // 立即完成所有剩余字符（用于快速完成）
+    private func flushRemainingCharacters() {
         guard !pendingTokens.isEmpty else { return }
         
-        // 批量更新最后一条助手消息
         if let lastIndex = messages.lastIndex(where: { $0.role == .assistant }) {
             switch messages[lastIndex].content {
             case .text(let existingText):
@@ -146,10 +206,7 @@ final class ChatVM: ObservableObject {
             }
         }
         
-        // 清空累积的tokens
         pendingTokens = ""
-        
-        // 触发滚动更新（节流）
         shouldScrollToBottom = true
     }
     
@@ -159,8 +216,7 @@ final class ChatVM: ObservableObject {
         // 清理所有定时器和缓冲区
         scrollUpdateTimer?.invalidate()
         scrollUpdateTimer = nil
-        tokenFlushTimer?.invalidate()
-        tokenFlushTimer = nil
+        stopTypewriterEffect()
         pendingTokens = ""
         shouldScrollToBottom = false
     }
@@ -208,5 +264,6 @@ final class ChatVM: ObservableObject {
     
     deinit {
         scrollUpdateTimer?.invalidate()
+        typewriterTimer?.invalidate()
     }
 }
