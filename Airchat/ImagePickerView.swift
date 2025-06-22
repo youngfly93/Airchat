@@ -136,7 +136,7 @@ struct ImagePickerView: View {
                         }
                         
                         // Verify it's a valid image
-                        if let nsImage = NSImage(data: imageData) {
+                        if NSImage(data: imageData) != nil {
                             // Compress if needed
                             let compressedData = compressImageData(imageData, maxSize: 5 * 1024 * 1024) // 5MB max after compression
                             

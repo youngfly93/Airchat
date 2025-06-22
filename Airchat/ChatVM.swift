@@ -164,7 +164,9 @@ final class ChatVM: ObservableObject {
         
         // Add to selected images
         let attachedImage = AttachedImage(url: dataUrl)
-        selectedImages.append(attachedImage)
+        Task { @MainActor in
+            selectedImages.append(attachedImage)
+        }
     }
     
     deinit {

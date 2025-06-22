@@ -422,7 +422,7 @@ private func parseTextFormatting(_ text: String) -> [MarkdownElement] {
 
 private func parseFormattingRecursive(_ text: String) -> [MarkdownElement] {
     var elements: [MarkdownElement] = []
-    var currentText = text
+    let currentText = text
     
     // Find the first occurrence of any formatting
     var earliestRange: Range<String.Index>?

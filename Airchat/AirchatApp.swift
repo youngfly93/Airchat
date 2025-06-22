@@ -8,6 +8,7 @@
 import SwiftUI
 import AppKit
 import Foundation
+import KeyboardShortcuts
 
 extension NSBezierPath {
     var cgPath: CGPath {
@@ -52,9 +53,32 @@ class KeyablePanel: NSPanel {
 struct AirchatApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
+    init() {
+        // 注册全局快捷键回调
+        KeyboardShortcuts.onKeyUp(for: .toggleWindow) {
+            WindowManager.shared.toggleWindow()
+        }
+    }
+    
     var body: some Scene {
         Settings {
-            EmptyView()
+            VStack {
+                Text("Airchat 快捷键设置")
+                    .font(.headline)
+                    .padding(.bottom, 10)
+                
+                KeyboardShortcuts.Recorder(
+                    "展开/折叠浮窗:",
+                    name: .toggleWindow
+                )
+                
+                Text("默认快捷键: ⌥ + Space")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.top, 5)
+            }
+            .frame(width: 300, height: 150)
+            .padding()
         }
     }
 }
@@ -63,10 +87,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
     var panel: NSPanel?
     var menu: NSMenu!
+    private let windowPositionKey = "AirchatWindowPosition"
+    private var hasRestoredPosition = false
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Initialize API key securely
         KeychainHelper.shared.setInitialAPIKey()
+        
+        // Set WindowManager reference
+        WindowManager.shared.appDelegate = self
         
         // Hide dock icon
         NSApp.setActivationPolicy(.accessory)
@@ -90,6 +119,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showChatItem.target = self
         menu.addItem(showChatItem)
         
+        let resetPositionItem = NSMenuItem(title: "重置窗口位置", action: #selector(resetWindowPosition), keyEquivalent: "")
+        resetPositionItem.target = self
+        menu.addItem(resetPositionItem)
+        
         menu.addItem(NSMenuItem.separator())
         
         let quitItem = NSMenuItem(title: "退出 Airchat", action: #selector(quitApp), keyEquivalent: "q")
@@ -103,23 +136,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         makePanel()
     }
     
-    @objc private func showPanel() {
-        guard let panel = panel else { return }
+    @objc func showPanel() {
+        guard let panel = panel else { 
+            print("Panel is nil!")
+            return 
+        }
         
-        // Position panel near status bar
-        if let button = statusItem.button {
-            let buttonRect = button.convert(button.bounds, to: nil)
-            let screenRect = button.window?.convertToScreen(buttonRect) ?? .zero
-            
-            // Default to expanded size, SwiftUI will handle the collapsed size automatically
-            let panelRect = NSRect(
-                x: screenRect.midX - 180, // Center horizontally under button
-                y: screenRect.minY - 530, // Position below button
-                width: 360,
-                height: 520
-            )
-            
-            panel.setFrame(panelRect, display: true)
+        // Get the main screen bounds
+        guard let screen = NSScreen.main else {
+            print("No main screen found!")
+            return
+        }
+        let screenFrame = screen.visibleFrame
+        
+        // Try to restore saved position
+        if let savedPosition = UserDefaults.standard.string(forKey: windowPositionKey),
+           hasRestoredPosition {
+            // Use saved position if available and we've restored at least once
+            let components = savedPosition.split(separator: ",")
+            if components.count == 2,
+               let x = Double(components[0]),
+               let y = Double(components[1]) {
+                var savedFrame = NSRect(x: x, y: y, width: panel.frame.width, height: panel.frame.height)
+                
+                // Ensure the window is within screen bounds
+                if !screenFrame.contains(savedFrame) {
+                    print("Saved position is off-screen, resetting to default")
+                    savedFrame = getDefaultWindowPosition()
+                }
+                
+                panel.setFrame(savedFrame, display: true)
+                print("Restored window position: \(savedFrame)")
+            }
+        } else {
+            // First time or no saved position - position near status bar
+            let defaultFrame = getDefaultWindowPosition()
+            panel.setFrame(defaultFrame, display: true)
+            hasRestoredPosition = true
+            print("Using default window position: \(defaultFrame)")
         }
         
         panel.makeKeyAndOrderFront(nil)
@@ -132,6 +186,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    private func getDefaultWindowPosition() -> NSRect {
+        if let button = statusItem.button {
+            let buttonRect = button.convert(button.bounds, to: nil)
+            let screenRect = button.window?.convertToScreen(buttonRect) ?? .zero
+            
+            return NSRect(
+                x: screenRect.midX - 180,
+                y: screenRect.minY - 530,
+                width: 360,
+                height: 520
+            )
+        } else {
+            // Fallback to center of screen
+            guard let screen = NSScreen.main else {
+                return NSRect(x: 100, y: 100, width: 360, height: 520)
+            }
+            let screenFrame = screen.visibleFrame
+            return NSRect(
+                x: screenFrame.midX - 180,
+                y: screenFrame.midY - 260,
+                width: 360,
+                height: 520
+            )
+        }
+    }
+    
     @objc private func toggleMenu() {
         guard let button = statusItem.button else { return }
         
@@ -140,6 +220,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func quitApp() {
         NSApplication.shared.terminate(nil)
+    }
+    
+    @objc private func resetWindowPosition() {
+        // Clear saved position
+        UserDefaults.standard.removeObject(forKey: windowPositionKey)
+        hasRestoredPosition = false
+        
+        // If window is open, reposition it
+        if let panel = panel, panel.isVisible {
+            let defaultFrame = getDefaultWindowPosition()
+            panel.setFrame(defaultFrame, display: true, animate: true)
+            print("Reset window position to default: \(defaultFrame)")
+        }
     }
     
     
@@ -226,7 +319,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.makeFirstResponder(panel.contentView)
     }
     
-    // Observe window frame changes to update mask
+    // Observe window frame changes to update mask and save position
     private func observeWindowFrameChanges() {
         guard let panel = panel else { return }
         
@@ -237,6 +330,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { _ in
             self.updateWindowMaskForCurrentState()
         }
+        
+        // Save position when window moves
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didMoveNotification,
+            object: panel,
+            queue: .main
+        ) { _ in
+            self.saveWindowPosition()
+        }
+    }
+    
+    func saveWindowPosition() {
+        guard let panel = panel else { return }
+        let position = "\(panel.frame.origin.x),\(panel.frame.origin.y)"
+        UserDefaults.standard.set(position, forKey: windowPositionKey)
     }
     
     // Update mask based on current window size

@@ -11,13 +11,15 @@ This is a fully implemented macOS floating chat window application built with Sw
 The application follows a SwiftUI + MVVM architecture:
 
 ### Core Components
-- **AirchatApp.swift**: Main app entry point with NSApplicationDelegateAdaptor, manages status bar item and floating NSPanel window
+- **AirchatApp.swift**: Main app entry point with NSApplicationDelegateAdaptor, manages status bar item and floating NSPanel window, includes global keyboard shortcuts support
 - **ChatWindow.swift**: SwiftUI chat interface with collapsible/expandable states, glass morphism design
 - **ChatVM.swift**: ViewModel managing chat state, message history, and API interactions
 - **ArkChatAPI.swift**: API client implementing streaming responses via Server-Sent Events (note: filename reflects legacy ARK API, but now uses Gemini)
 - **KeychainHelper.swift**: Generic keychain wrapper for secure API key storage
 - **VisualEffectView.swift**: NSViewRepresentable wrapper for macOS visual effects
 - **Item.swift**: Contains ChatMessage model (note: filename is misleading)
+- **WindowManager.swift**: Singleton manager for controlling window visibility and state
+- **KeyboardShortcuts.swift**: Global keyboard shortcuts configuration using KeyboardShortcuts library
 
 ### Key Architectural Patterns
 - Status bar application (no dock icon) using NSStatusBar
@@ -25,6 +27,8 @@ The application follows a SwiftUI + MVVM architecture:
 - Observable ViewModel pattern with @Published properties
 - AsyncThrowingStream for streaming API responses
 - Secure credential storage using Keychain Services
+- Global keyboard shortcuts using KeyboardShortcuts library (default: ⌥ + Space)
+- Singleton WindowManager pattern for window state control
 
 ## Development Commands
 
@@ -47,6 +51,8 @@ xcodebuild -project Airchat.xcodeproj -scheme Airchat clean
 - Build and run in Xcode (⌘R)
 - App appears in menu bar (top right)
 - Click menu bar icon to show/hide chat window
+- Use global keyboard shortcut ⌥ + Space to toggle window from anywhere
+- Customize keyboard shortcut in Settings (menu bar → right-click → Settings...)
 
 ## API Integration Details
 
@@ -109,3 +115,30 @@ The project uses Swift Testing framework (Xcode 16+):
 - Window position is calculated in AirchatApp.swift
 - Adjust `windowOrigin` calculation if needed
 - Consider multiple display scenarios
+
+## Global Keyboard Shortcuts
+
+The app implements global keyboard shortcuts using the KeyboardShortcuts library:
+
+### Dependencies
+- **KeyboardShortcuts**: External Swift Package from sindresorhus/KeyboardShortcuts
+- **Repository**: https://github.com/sindresorhus/KeyboardShortcuts
+- **Version**: 2.3.0+
+
+### Implementation Details
+- **Default Shortcut**: ⌥ + Space (Option + Space)
+- **Shortcut Definition**: Defined in KeyboardShortcuts.swift using KeyboardShortcuts.Name extension
+- **Registration**: Global shortcut callback registered in AirchatApp.init()
+- **Window Control**: WindowManager.shared.toggleWindow() handles show/hide logic
+- **Settings UI**: Settings scene provides KeyboardShortcuts.Recorder for user customization
+- **Persistence**: Shortcuts automatically saved to UserDefaults by KeyboardShortcuts library
+
+### Usage
+- Press ⌥ + Space anywhere in macOS to toggle chat window
+- Access Settings via menu bar right-click → Settings... to customize
+- Shortcuts work globally even when app is in background
+
+### Troubleshooting
+- Ensure KeyboardShortcuts package is added to project dependencies
+- Check that showPanel() method in AppDelegate is public (not private)
+- Verify WindowManager.shared.appDelegate reference is set in applicationDidFinishLaunching
