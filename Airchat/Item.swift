@@ -119,13 +119,31 @@ struct AttachedImage: Codable, Identifiable {
     let id = UUID()
     let url: String
     let detail: String
+    let fileType: AttachedFileType
+    let fileName: String?
     
     private enum CodingKeys: String, CodingKey {
-        case url, detail
+        case url, detail, fileType, fileName
     }
     
-    init(url: String, detail: String = "auto") {
+    init(url: String, detail: String = "auto", fileType: AttachedFileType = .image, fileName: String? = nil) {
         self.url = url
         self.detail = detail
+        self.fileType = fileType
+        self.fileName = fileName
+    }
+}
+
+enum AttachedFileType: String, Codable {
+    case image = "image"
+    case pdf = "pdf"
+    
+    var systemIcon: String {
+        switch self {
+        case .image:
+            return "photo"
+        case .pdf:
+            return "doc.fill"
+        }
     }
 }

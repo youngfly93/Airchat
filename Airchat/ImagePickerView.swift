@@ -50,33 +50,50 @@ struct ImagePickerView: View {
     
     private func imagePreviewItem(_ image: AttachedImage) -> some View {
         ZStack(alignment: .topTrailing) {
-            AsyncImage(url: URL(string: image.url)) { asyncImage in
-                switch asyncImage {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 60, height: 60)
-                        .clipped()
-                        .cornerRadius(8)
-                case .failure(_):
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 60, height: 60)
-                        .cornerRadius(8)
-                        .overlay(
-                            Image(systemName: "photo")
-                                .foregroundColor(.secondary)
-                        )
-                case .empty:
-                    ProgressView()
-                        .frame(width: 60, height: 60)
-                @unknown default:
-                    EmptyView()
+            if image.fileType == .image {
+                AsyncImage(url: URL(string: image.url)) { asyncImage in
+                    switch asyncImage {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 60, height: 60)
+                            .clipped()
+                            .cornerRadius(8)
+                    case .failure(_):
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(width: 60, height: 60)
+                            .cornerRadius(8)
+                            .overlay(
+                                Image(systemName: "photo")
+                                    .foregroundColor(.secondary)
+                            )
+                    case .empty:
+                        ProgressView()
+                            .frame(width: 60, height: 60)
+                    @unknown default:
+                        EmptyView()
+                    }
                 }
+            } else {
+                // File preview (PDF, etc.)
+                VStack(spacing: 4) {
+                    Image(systemName: image.fileType.systemIcon)
+                        .font(.system(size: 20))
+                        .foregroundColor(.accentColor)
+                    
+                    if let fileName = image.fileName {
+                        Text(fileName)
+                            .font(.system(size: 8))
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(width: 60, height: 60)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
             }
-            .scaleEffect(animatingImageIDs.contains(image.id) ? 1.2 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: animatingImageIDs.contains(image.id))
             
             Button(action: {
                 removeImage(image)
@@ -89,27 +106,24 @@ struct ImagePickerView: View {
             .buttonStyle(.plain)
             .offset(x: 5, y: -5)
         }
+        .scaleEffect(animatingImageIDs.contains(image.id) ? 1.2 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: animatingImageIDs.contains(image.id))
     }
     
     private var imagePickerButton: some View {
         Button(action: {
             showFileImporter = true
         }) {
-            HStack(spacing: 6) {
-                Image(systemName: "photo")
-                    .font(.system(size: 14))
-                Text("添加图片")
-                    .font(.system(size: 14))
-            }
-            .foregroundColor(.accentColor)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            Image(systemName: "plus")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.accentColor)
+                .frame(width: 32, height: 32)
+                .background(.ultraThinMaterial, in: Circle())
         }
         .buttonStyle(.plain)
         .fileImporter(
             isPresented: $showFileImporter,
-            allowedContentTypes: [.image],
+            allowedContentTypes: [.image, .pdf],
             allowsMultipleSelection: true
         ) { result in
             handleFileSelection(result)
@@ -127,26 +141,46 @@ struct ImagePickerView: View {
                 if url.startAccessingSecurityScopedResource() {
                     defer { url.stopAccessingSecurityScopedResource() }
                     
-                    if let imageData = try? Data(contentsOf: url) {
+                    if let fileData = try? Data(contentsOf: url) {
                         // Check file size (limit to 20MB)
                         let maxSize = 20 * 1024 * 1024 // 20MB
-                        if imageData.count > maxSize {
-                            print("Image too large: \(imageData.count) bytes (max: \(maxSize))")
+                        if fileData.count > maxSize {
+                            print("File too large: \(fileData.count) bytes (max: \(maxSize))")
                             continue
                         }
                         
-                        // Verify it's a valid image
-                        if NSImage(data: imageData) != nil {
-                            // Compress if needed
-                            let compressedData = compressImageData(imageData, maxSize: 5 * 1024 * 1024) // 5MB max after compression
+                        let fileName = url.lastPathComponent
+                        let pathExtension = url.pathExtension.lowercased()
+                        
+                        if pathExtension == "pdf" {
+                            // Handle PDF file
+                            let base64String = fileData.base64EncodedString()
+                            let dataUrl = "data:application/pdf;base64,\(base64String)"
                             
-                            // Convert to base64 for API
-                            let base64String = compressedData.base64EncodedString()
-                            let mimeType = getMimeType(from: url)
-                            let dataUrl = "data:\(mimeType);base64,\(base64String)"
-                            
-                            let attachedImage = AttachedImage(url: dataUrl)
-                            selectedImages.append(attachedImage)
+                            let attachedFile = AttachedImage(
+                                url: dataUrl,
+                                fileType: .pdf,
+                                fileName: fileName
+                            )
+                            selectedImages.append(attachedFile)
+                        } else {
+                            // Handle image file
+                            if NSImage(data: fileData) != nil {
+                                // Compress if needed
+                                let compressedData = compressImageData(fileData, maxSize: 5 * 1024 * 1024) // 5MB max after compression
+                                
+                                // Convert to base64 for API
+                                let base64String = compressedData.base64EncodedString()
+                                let mimeType = getMimeType(from: url)
+                                let dataUrl = "data:\(mimeType);base64,\(base64String)"
+                                
+                                let attachedImage = AttachedImage(
+                                    url: dataUrl,
+                                    fileType: .image,
+                                    fileName: fileName
+                                )
+                                selectedImages.append(attachedImage)
+                            }
                         }
                     }
                 }

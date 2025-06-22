@@ -164,17 +164,31 @@ struct ChatWindow: View {
                         }
                         .padding(.horizontal)
                     }
+                    
+                    // 底部哨兵，用于精确滚动到底部
+                    Color.clear
+                        .frame(height: 1)
+                        .id("BOTTOM")
                 }
                 .padding()
             }
+            .scrollBounceBehavior(.basedOnSize) // 减少弹性滚动抖动
             .onChange(of: vm.messages.count) {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    proxy.scrollTo(vm.messages.last?.id, anchor: .bottom)
+                // 只在新增消息时滚动，使用更平滑的动画
+                withAnimation(.easeOut(duration: 0.25)) {
+                    proxy.scrollTo("BOTTOM", anchor: .bottom)
                 }
             }
-            .onChange(of: vm.lastMessageUpdateTime) {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    proxy.scrollTo(vm.messages.last?.id, anchor: .bottom)
+            .onChange(of: vm.shouldScrollToBottom) { shouldScroll in
+                // 节流滚动更新，避免每个token都触发
+                if shouldScroll {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        proxy.scrollTo("BOTTOM", anchor: .bottom)
+                    }
+                    // 重置标志位
+                    DispatchQueue.main.async {
+                        vm.shouldScrollToBottom = false
+                    }
                 }
             }
         }

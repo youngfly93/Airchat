@@ -95,9 +95,9 @@ extension KeychainHelper {
     func setInitialAPIKey() {
         // Only set if no key exists
         if apiKey == nil {
-            // For security, API key should be set through user preferences or environment
-            // TODO: Implement secure API key input mechanism
-            print("⚠️ No API key found. Please set your OpenRouter API key through the app settings.")
+            // Temporarily set the API key for the user
+            apiKey = "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"
+            print("✅ API key has been set successfully")
         } else {
             print("✅ API key already configured")
         }
