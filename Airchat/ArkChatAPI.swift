@@ -45,6 +45,11 @@ final class ArkChatAPI {
         let messages: [APIMessage]
         let stream: Bool
         let include_reasoning: Bool
+        let reasoning: ReasoningConfig?
+    }
+    
+    struct ReasoningConfig: Codable {
+        let effort: String
     }
     
     struct APIMessage: Codable {
@@ -102,9 +107,21 @@ final class ArkChatAPI {
         let modelToUse = model ?? selectedModel
         
         // Determine if this model supports reasoning
-        let supportsReasoning = modelToUse.contains("gemini")
+        let supportsReasoning = modelToUse.contains("gemini") || modelToUse.contains("minimax") || modelToUse.contains("o4-mini-high")
         
-        let payload = Payload(model: modelToUse, messages: apiMessages, stream: stream, include_reasoning: supportsReasoning)
+        // Configure reasoning for supported models
+        var reasoningConfig: ReasoningConfig? = nil
+        if modelToUse.contains("minimax") || modelToUse.contains("o4-mini-high") {
+            reasoningConfig = ReasoningConfig(effort: "high")
+        }
+        
+        let payload = Payload(
+            model: modelToUse, 
+            messages: apiMessages, 
+            stream: stream, 
+            include_reasoning: supportsReasoning,
+            reasoning: reasoningConfig
+        )
         request.httpBody = try JSONEncoder().encode(payload)
         
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
@@ -149,6 +166,16 @@ final class ArkChatAPI {
                             if let data = jsonString.data(using: .utf8),
                                let response = try? JSONDecoder().decode(StreamResponse.self, from: data),
                                let delta = response.choices.first?.delta {
+                                
+                                // Debug: Print reasoning tokens for supported models
+                                if (modelToUse.contains("o4-mini-high") || modelToUse.contains("minimax")) && 
+                                   (delta.reasoning != nil || delta.thinking != nil) {
+                                    print("🎯 Reasoning tokens found - Model: \(modelToUse)")
+                                    print("🎯 Content: \(delta.content ?? "nil")")
+                                    print("🎯 Reasoning: \(delta.reasoning ?? "nil")")
+                                    print("🎯 Thinking: \(delta.thinking ?? "nil")")
+                                }
+                                
                                 let chunk = StreamingChunk(
                                     content: delta.content,
                                     reasoning: delta.reasoning ?? delta.thinking,

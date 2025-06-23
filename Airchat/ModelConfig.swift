@@ -45,8 +45,8 @@ class ModelConfig: ObservableObject {
                 id: "minimax/minimax-m1",
                 name: "MiniMax M1",
                 provider: "MiniMax",
-                description: "MiniMax最新模型，高性能对话AI",
-                supportsReasoning: false,
+                description: "MiniMax最新模型，支持思考过程显示",
+                supportsReasoning: true,
                 contextWindow: 200000,
                 pricing: AIModel.ModelPricing(input: 0.15, output: 0.6)
             ),
@@ -63,8 +63,8 @@ class ModelConfig: ObservableObject {
                 id: "openai/o4-mini-high",
                 name: "O4 Mini High",
                 provider: "OpenAI",
-                description: "OpenAI最新高性能小型模型，快速且高效",
-                supportsReasoning: false,
+                description: "OpenAI最新高性能小型模型，支持思考过程",
+                supportsReasoning: true,
                 contextWindow: 128000,
                 pricing: AIModel.ModelPricing(input: 0.15, output: 0.6)
             ),
