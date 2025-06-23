@@ -10,6 +10,7 @@ import Foundation
 struct StreamingChunk {
     let content: String?
     let reasoning: String?
+    let thinking: String?
 }
 
 struct StreamResponse: Codable {
@@ -22,6 +23,11 @@ struct StreamResponse: Codable {
     struct Delta: Codable {
         let content: String?
         let reasoning: String?
+        let thinking: String?
+        
+        private enum CodingKeys: String, CodingKey {
+            case content, reasoning, thinking
+        }
     }
 }
 
@@ -145,7 +151,8 @@ final class ArkChatAPI {
                                let delta = response.choices.first?.delta {
                                 let chunk = StreamingChunk(
                                     content: delta.content,
-                                    reasoning: delta.reasoning
+                                    reasoning: delta.reasoning ?? delta.thinking,
+                                    thinking: delta.thinking
                                 )
                                 continuation.yield(chunk)
                             }

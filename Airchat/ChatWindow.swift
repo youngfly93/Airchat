@@ -260,34 +260,12 @@ struct ChatWindow: View {
             VStack(alignment: .leading, spacing: 8) {
                 if message.role == .assistant {
                     // Show reasoning first if available (only for supported models)
-                    if let reasoning = message.reasoning, !reasoning.isEmpty, vm.modelConfig.selectedModel.supportsReasoning {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "lightbulb")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                Text("思考过程")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                            }
-                            
-                            Text(reasoning)
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                                .textSelection(.enabled)
-                                .padding(10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.accentColor.opacity(0.08))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color.accentColor.opacity(0.15), lineWidth: 0.5)
-                                        )
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-                        .padding(.bottom, 4)
+                    if let reasoning = message.reasoning, 
+                       !reasoning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                       vm.modelConfig.selectedModel.supportsReasoning {
+                        CollapsibleThinkingView(reasoning: reasoning)
+                            .padding(.bottom, 4)
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
                     
                     // Show main content

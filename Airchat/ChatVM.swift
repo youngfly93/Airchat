@@ -129,6 +129,9 @@ final class ChatVM: ObservableObject {
                 messages[messages.count - 1].reasoning = ""
             }
             messages[messages.count - 1].reasoning! += reasoning
+            
+            // 触发UI更新以显示推理过程的变化
+            lastMessageUpdateTime = Date()
         }
     }
     
