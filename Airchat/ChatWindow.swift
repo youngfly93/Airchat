@@ -183,9 +183,15 @@ struct ChatWindow: View {
                     proxy.scrollTo("BOTTOM", anchor: .bottom)
                 }
             }
-            .onReceive(vm.scrollToBottomPublisher) { _ in
-                // 打字机效果期间的实时滚动，无动画但更平滑
+            .onReceive(vm.streamingScrollPublisher) { _ in
+                // 流式输出期间的实时滚动，无动画确保跟随
                 proxy.scrollTo("BOTTOM", anchor: .bottom)
+            }
+            .onReceive(vm.normalScrollPublisher) { _ in
+                // 普通情况下的滚动，带轻微动画
+                withAnimation(.easeOut(duration: 0.2)) {
+                    proxy.scrollTo("BOTTOM", anchor: .bottom)
+                }
             }
         }
     }

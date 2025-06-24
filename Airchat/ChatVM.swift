@@ -26,10 +26,18 @@ final class ChatVM: ObservableObject {
     private let pasteboardMonitor = PasteboardMonitor()
     let modelConfig = ModelConfig()
     
-    // 优化的滚动机制
-    private let scrollToBottomSubject = PassthroughSubject<Void, Never>()
-    var scrollToBottomPublisher: AnyPublisher<Void, Never> {
-        scrollToBottomSubject
+    // 双重滚动机制：流式输出实时滚动 + 普通防抖滚动
+    private let streamingScrollSubject = PassthroughSubject<Void, Never>()
+    private let normalScrollSubject = PassthroughSubject<Void, Never>()
+    
+    // 流式输出时的实时滚动（无防抖）
+    var streamingScrollPublisher: AnyPublisher<Void, Never> {
+        streamingScrollSubject.eraseToAnyPublisher()
+    }
+    
+    // 普通情况下的防抖滚动
+    var normalScrollPublisher: AnyPublisher<Void, Never> {
+        normalScrollSubject
             .throttle(for: .milliseconds(50), scheduler: DispatchQueue.main, latest: true)
             .eraseToAnyPublisher()
     }
@@ -97,7 +105,7 @@ final class ChatVM: ObservableObject {
                 
                 // 最终滚动到底部 - 确保在主线程执行
                 Task { @MainActor in
-                    triggerScrollToBottom()
+                    triggerNormalScroll()
                 }
             } catch {
                 // 确保错误情况下也显示所有字符
@@ -110,7 +118,7 @@ final class ChatVM: ObservableObject {
                 
                 // 滚动到底部显示错误消息 - 确保在主线程执行
                 Task { @MainActor in
-                    triggerScrollToBottom()
+                    triggerNormalScroll()
                 }
             }
         }
@@ -139,8 +147,8 @@ final class ChatVM: ObservableObject {
             }
             messages[messages.count - 1].reasoning! += reasoning
             
-            // 触发UI更新以显示推理过程的变化
-            lastMessageUpdateTime = Date()
+            // 推理过程更新时也需要滚动跟随
+            triggerStreamingScroll()
         }
     }
     
@@ -189,13 +197,18 @@ final class ChatVM: ObservableObject {
             }
         }
         
-        // 打字机模式下需要实时滚动跟随，使用防抖机制
-        triggerScrollToBottom()
+        // 打字机模式下需要实时滚动跟随
+        triggerStreamingScroll()
     }
     
-    // 触发滚动到底部，使用防抖机制
-    private func triggerScrollToBottom() {
-        scrollToBottomSubject.send()
+    // 触发流式输出时的实时滚动
+    private func triggerStreamingScroll() {
+        streamingScrollSubject.send()
+    }
+    
+    // 触发普通情况下的防抖滚动
+    private func triggerNormalScroll() {
+        normalScrollSubject.send()
     }
     
     // 停止打字机效果
@@ -230,7 +243,7 @@ final class ChatVM: ObservableObject {
         }
         
         pendingTokens = ""
-        triggerScrollToBottom()
+        triggerNormalScroll()
     }
     
     func clearChat() {
