@@ -198,10 +198,15 @@ struct ChatWindow: View {
     
     private var inputView: some View {
         VStack(spacing: 8) {
-            // Image picker
-            ImagePickerView(selectedImages: $vm.selectedImages)
+            // Show image previews at the top if any images are selected
+            if !vm.selectedImages.isEmpty {
+                imagePreviewSection
+            }
             
             HStack(alignment: .bottom, spacing: 12) {
+                // Add button on the left
+                addButton
+                
                 TextField("输入内容…", text: $vm.composing, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...5)
@@ -238,6 +243,101 @@ struct ChatWindow: View {
         .clipShape(Circle())
         .disabled(isDisabled)
         .keyboardShortcut(.return, modifiers: [.command])
+    }
+    
+    private var addButton: some View {
+        Button(action: {
+            vm.showFileImporter = true
+        }) {
+            Image(systemName: "plus")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.accentColor)
+        }
+        .buttonStyle(.plain)
+        .frame(width: 36, height: 36)
+        .background(.ultraThinMaterial)
+        .clipShape(Circle())
+        .fileImporter(
+            isPresented: $vm.showFileImporter,
+            allowedContentTypes: [.image, .pdf],
+            allowsMultipleSelection: true
+        ) { result in
+            vm.handleFileSelection(result)
+        }
+    }
+    
+    private var imagePreviewSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(vm.selectedImages) { image in
+                    imagePreviewItem(image)
+                }
+            }
+            .padding(.horizontal, 12)
+        }
+        .frame(height: 80)
+    }
+    
+    private func imagePreviewItem(_ image: AttachedImage) -> some View {
+        ZStack(alignment: .topTrailing) {
+            if image.fileType == .image {
+                AsyncImage(url: URL(string: image.url)) { asyncImage in
+                    switch asyncImage {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 60, height: 60)
+                            .clipped()
+                            .cornerRadius(8)
+                    case .failure(_):
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(width: 60, height: 60)
+                            .cornerRadius(8)
+                            .overlay(
+                                Image(systemName: "photo")
+                                    .foregroundColor(.secondary)
+                            )
+                    case .empty:
+                        ProgressView()
+                            .frame(width: 60, height: 60)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            } else {
+                // File preview (PDF, etc.)
+                VStack(spacing: 4) {
+                    Image(systemName: image.fileType.systemIcon)
+                        .font(.system(size: 20))
+                        .foregroundColor(.accentColor)
+                    
+                    if let fileName = image.fileName {
+                        Text(fileName)
+                            .font(.system(size: 8))
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(width: 60, height: 60)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            }
+            
+            Button(action: {
+                vm.removeImage(image)
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white)
+                    .background(Color.black.opacity(0.6), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .offset(x: 5, y: -5)
+        }
+        .scaleEffect(vm.animatingImageIDs.contains(image.id) ? 1.2 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: vm.animatingImageIDs.contains(image.id))
     }
     
     @ViewBuilder

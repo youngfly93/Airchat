@@ -20,6 +20,8 @@ final class ChatVM: ObservableObject {
     @Published var lastMessageUpdateTime = Date()
     @Published var showModelSelection = false
     @Published var shouldScrollToBottom = false
+    @Published var showFileImporter = false
+    @Published var animatingImageIDs = Set<UUID>()
     
     private let api = ArkChatAPI()
     private var scrollUpdateTimer: Timer?
@@ -295,6 +297,120 @@ final class ChatVM: ObservableObject {
         let attachedImage = AttachedImage(url: dataUrl)
         Task { @MainActor in
             selectedImages.append(attachedImage)
+        }
+    }
+    
+    func removeImage(_ image: AttachedImage) {
+        selectedImages.removeAll { $0.id == image.id }
+    }
+    
+    func handleFileSelection(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            for url in urls {
+                if url.startAccessingSecurityScopedResource() {
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    
+                    if let fileData = try? Data(contentsOf: url) {
+                        // Check file size (limit to 20MB)
+                        let maxSize = 20 * 1024 * 1024 // 20MB
+                        if fileData.count > maxSize {
+                            print("File too large: \(fileData.count) bytes (max: \(maxSize))")
+                            continue
+                        }
+                        
+                        let fileName = url.lastPathComponent
+                        let pathExtension = url.pathExtension.lowercased()
+                        
+                        if pathExtension == "pdf" {
+                            // Handle PDF file
+                            let base64String = fileData.base64EncodedString()
+                            let dataUrl = "data:application/pdf;base64,\(base64String)"
+                            
+                            let attachedFile = AttachedImage(
+                                url: dataUrl,
+                                fileType: .pdf,
+                                fileName: fileName
+                            )
+                            addImageWithAnimation(attachedFile)
+                        } else {
+                            // Handle image file
+                            if NSImage(data: fileData) != nil {
+                                // Compress if needed
+                                let compressedData = compressImageData(fileData, maxSize: 5 * 1024 * 1024) // 5MB max after compression
+                                
+                                // Convert to base64 for API
+                                let base64String = compressedData.base64EncodedString()
+                                let mimeType = getMimeType(from: url)
+                                let dataUrl = "data:\(mimeType);base64,\(base64String)"
+                                
+                                let attachedImage = AttachedImage(
+                                    url: dataUrl,
+                                    fileType: .image,
+                                    fileName: fileName
+                                )
+                                addImageWithAnimation(attachedImage)
+                            }
+                        }
+                    }
+                }
+            }
+        case .failure(let error):
+            print("File selection failed: \(error)")
+        }
+    }
+    
+    private func addImageWithAnimation(_ image: AttachedImage) {
+        selectedImages.append(image)
+        animatingImageIDs.insert(image.id)
+        
+        // Remove from animation set after delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.animatingImageIDs.remove(image.id)
+        }
+    }
+    
+    private func compressImageData(_ data: Data, maxSize: Int) -> Data {
+        guard let nsImage = NSImage(data: data) else { return data }
+        
+        // If already small enough, return original
+        if data.count <= maxSize {
+            return data
+        }
+        
+        // Calculate compression quality
+        let compressionRatio = Double(maxSize) / Double(data.count)
+        let quality = min(max(compressionRatio, 0.1), 0.9) // Between 0.1 and 0.9
+        
+        // Create bitmap representation
+        if let tiffData = nsImage.tiffRepresentation,
+           let bitmap = NSBitmapImageRep(data: tiffData) {
+            
+            let properties: [NSBitmapImageRep.PropertyKey: Any] = [
+                .compressionFactor: quality
+            ]
+            
+            if let compressedData = bitmap.representation(using: .jpeg, properties: properties) {
+                return compressedData
+            }
+        }
+        
+        return data
+    }
+    
+    private func getMimeType(from url: URL) -> String {
+        let pathExtension = url.pathExtension.lowercased()
+        switch pathExtension {
+        case "jpg", "jpeg":
+            return "image/jpeg"
+        case "png":
+            return "image/png"
+        case "gif":
+            return "image/gif"
+        case "webp":
+            return "image/webp"
+        default:
+            return "image/jpeg" // Default fallback
         }
     }
     
