@@ -12,6 +12,9 @@ struct ChatWindow: View {
     @StateObject private var vm = ChatVM()
     @State private var isCollapsed = false
     
+    // 定义更柔和的蓝色
+    private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
+    
     var body: some View {
         if isCollapsed {
             collapsedView
@@ -23,7 +26,7 @@ struct ChatWindow: View {
     private var collapsedView: some View {
         Image(systemName: "bubble.left.and.bubble.right.fill")
             .font(.title2)
-            .foregroundColor(.accentColor)
+            .foregroundColor(softBlue)
             .frame(width: 60, height: 60)
             .background(
                 VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
@@ -97,7 +100,7 @@ struct ChatWindow: View {
                             .font(.system(size: 12, weight: .medium))
                             .lineLimit(1)
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(softBlue)
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 8)
@@ -124,7 +127,7 @@ struct ChatWindow: View {
                 }) {
                     Text("Clear")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.blue)
+                        .foregroundColor(softBlue)
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 12)
@@ -239,7 +242,7 @@ struct ChatWindow: View {
         }
         .buttonStyle(.plain)
         .frame(width: 36, height: 36)
-        .background(isDisabled ? Color.gray.opacity(0.3) : Color.accentColor)
+        .background(isDisabled ? Color.gray.opacity(0.3) : softBlue)
         .clipShape(Circle())
         .disabled(isDisabled)
         .keyboardShortcut(.return, modifiers: [.command])
@@ -251,7 +254,7 @@ struct ChatWindow: View {
         }) {
             Image(systemName: "plus")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.accentColor)
+                .foregroundColor(softBlue)
         }
         .buttonStyle(.plain)
         .frame(width: 36, height: 36)
@@ -311,7 +314,7 @@ struct ChatWindow: View {
                 VStack(spacing: 4) {
                     Image(systemName: image.fileType.systemIcon)
                         .font(.system(size: 20))
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(softBlue)
                     
                     if let fileName = image.fileName {
                         Text(fileName)

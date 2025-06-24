@@ -12,6 +12,9 @@ struct CollapsibleThinkingView: View {
     @State private var isExpanded = false
     @State private var contentHeight: CGFloat = 0
     
+    // 定义更柔和的蓝色
+    private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
+    
     // Auto-expand if content is short enough
     private var shouldAutoExpand: Bool {
         processedReasoning.count < 150 && processedReasoning.components(separatedBy: .newlines).count <= 3
@@ -104,10 +107,10 @@ struct CollapsibleThinkingView: View {
             .padding(10)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.accentColor.opacity(0.08))
+                    .fill(softBlue.opacity(0.08))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.accentColor.opacity(0.15), lineWidth: 0.5)
+                            .stroke(softBlue.opacity(0.15), lineWidth: 0.5)
                     )
             )
             .clipShape(RoundedRectangle(cornerRadius: 8))

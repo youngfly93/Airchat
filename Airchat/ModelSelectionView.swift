@@ -11,6 +11,9 @@ struct ModelSelectionView: View {
     @ObservedObject var modelConfig: ModelConfig
     @Binding var isPresented: Bool
     
+    // 定义更柔和的蓝色
+    private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
+    
     var body: some View {
         VStack(spacing: 0) {
             headerView
@@ -84,16 +87,19 @@ struct ModelCard: View {
     
     @State private var isHovered = false
     
+    // 定义更柔和的蓝色
+    private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
+    
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
             .fill(
-                isSelected ? Color.blue.opacity(0.1) : 
+                isSelected ? softBlue.opacity(0.1) : 
                 (isHovered ? Color.white.opacity(0.05) : Color.clear)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(
-                        isSelected ? Color.blue.opacity(0.3) : 
+                        isSelected ? softBlue.opacity(0.3) : 
                         (isHovered ? Color.white.opacity(0.2) : Color.white.opacity(0.1)),
                         lineWidth: isSelected ? 2 : 1
                     )
@@ -120,16 +126,16 @@ struct ModelCard: View {
                         if isSelected {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 16))
-                                .foregroundColor(.blue)
+                                .foregroundColor(softBlue)
                         }
                     }
                     
                     Text(model.provider)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.blue)
+                        .foregroundColor(softBlue)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
+                        .background(softBlue.opacity(0.1))
                         .clipShape(Capsule())
                 }
             }
