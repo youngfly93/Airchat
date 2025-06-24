@@ -166,42 +166,26 @@ struct ChatWindow: View {
                         .padding(.horizontal)
                     }
                     
-                    // 底部哨兵，用于精确滚动到底部
+                    // 底部哨兵，确保内容始终贴着输入框上沿
                     Color.clear
                         .frame(height: 1)
                         .id("BOTTOM")
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.top)
+                .padding(.bottom, 5) // 确保内容贴近输入框但不被遮挡
             }
-            .scrollBounceBehavior(.basedOnSize) // 减少弹性滚动抖动
-            .scrollIndicators(.never) // 隐藏滚动条减少干扰
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollIndicators(.never)
             .onChange(of: vm.messages.count) {
-                // 新增消息时的平滑滚动
-                withAnimation(.easeOut(duration: 0.2)) {
+                // 新增消息时滚动到底部，使用动画
+                withAnimation(.easeOut(duration: 0.3)) {
                     proxy.scrollTo("BOTTOM", anchor: .bottom)
                 }
             }
-            .onChange(of: vm.shouldScrollToBottom) { _, shouldScroll in
-                // 流式内容更新滚动 - 即时跟随，但避免过度动画
-                if shouldScroll {
-                    // 打字机模式下使用非动画滚动，确保跟随
-                    proxy.scrollTo("BOTTOM", anchor: .bottom)
-                    vm.shouldScrollToBottom = false
-                }
-            }
-            // 添加一个更频繁的滚动触发器，基于最后一条消息的内容变化
-            .onChange(of: vm.lastMessageUpdateTime) { _, _ in
-                // 当正在加载时，始终滚动到底部
-                if vm.isLoading {
-                    proxy.scrollTo("BOTTOM", anchor: .bottom)
-                }
-            }
-            // 监听最后一条助手消息的内容变化
-            .onChange(of: vm.lastAssistantMessageText) { _, _ in
-                // 内容变化时滚动到底部
-                if vm.isLoading {
-                    proxy.scrollTo("BOTTOM", anchor: .bottom)
-                }
+            .onReceive(vm.scrollToBottomPublisher) { _ in
+                // 打字机效果期间的实时滚动，无动画但更平滑
+                proxy.scrollTo("BOTTOM", anchor: .bottom)
             }
         }
     }

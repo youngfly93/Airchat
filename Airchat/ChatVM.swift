@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 final class ChatVM: ObservableObject {
@@ -24,6 +25,14 @@ final class ChatVM: ObservableObject {
     private var scrollUpdateTimer: Timer?
     private let pasteboardMonitor = PasteboardMonitor()
     let modelConfig = ModelConfig()
+    
+    // 优化的滚动机制
+    private let scrollToBottomSubject = PassthroughSubject<Void, Never>()
+    var scrollToBottomPublisher: AnyPublisher<Void, Never> {
+        scrollToBottomSubject
+            .throttle(for: .milliseconds(50), scheduler: DispatchQueue.main, latest: true)
+            .eraseToAnyPublisher()
+    }
     
     // 计算属性：获取最后一条助手消息的内容文本
     var lastAssistantMessageText: String {
@@ -88,7 +97,7 @@ final class ChatVM: ObservableObject {
                 
                 // 最终滚动到底部 - 确保在主线程执行
                 Task { @MainActor in
-                    shouldScrollToBottom = true
+                    triggerScrollToBottom()
                 }
             } catch {
                 // 确保错误情况下也显示所有字符
@@ -101,7 +110,7 @@ final class ChatVM: ObservableObject {
                 
                 // 滚动到底部显示错误消息 - 确保在主线程执行
                 Task { @MainActor in
-                    shouldScrollToBottom = true
+                    triggerScrollToBottom()
                 }
             }
         }
@@ -180,12 +189,14 @@ final class ChatVM: ObservableObject {
             }
         }
         
-        // 打字机模式下需要实时滚动跟随
-        shouldScrollToBottom = true
-        lastMessageUpdateTime = Date()
+        // 打字机模式下需要实时滚动跟随，使用防抖机制
+        triggerScrollToBottom()
     }
     
-    // 移除了错误的滚动节流逻辑
+    // 触发滚动到底部，使用防抖机制
+    private func triggerScrollToBottom() {
+        scrollToBottomSubject.send()
+    }
     
     // 停止打字机效果
     private func stopTypewriterEffect() {
@@ -219,7 +230,7 @@ final class ChatVM: ObservableObject {
         }
         
         pendingTokens = ""
-        shouldScrollToBottom = true
+        triggerScrollToBottom()
     }
     
     func clearChat() {
