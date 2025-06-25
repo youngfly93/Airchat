@@ -270,50 +270,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     
-    // 添加动画切换方法
+    // 添加动画切换方法 - 优化版本，专注于性能和同步
     func toggleWindowState(collapsed: Bool) {
         guard let panel = panel else { return }
         
         isCollapsed = collapsed
         let targetSize = collapsed ? collapsedSize : expandedSize
         
-        // 计算新的frame，保持窗口右上角位置不变（更自然的动画效果）
+        // 计算新的frame，保持窗口右上角位置不变
         var targetFrame = panel.frame
         let xDiff = panel.frame.width - targetSize.width
         targetFrame.origin.x += xDiff
         targetFrame.origin.y += panel.frame.height - targetSize.height
         targetFrame.size = targetSize
         
-        // 禁用隐式动画，使用显式控制
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        
-        // 立即通知SwiftUI内容开始变化（在窗口动画之前）
+        // 立即通知SwiftUI开始内容动画
         NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
         
-        CATransaction.commit()
+        // 计算新的圆角半径
+        let newRadius = collapsed ? 18.0 : 20.0
         
-        // 同时开始窗口和内容动画，确保同步
-        DispatchQueue.main.async {
-            NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.25
-                context.timingFunction = CAMediaTimingFunction(controlPoints: 0.25, 0.1, 0.25, 1.0)
-                context.allowsImplicitAnimation = true
-                
-                // 使用标准的窗口动画
-                panel.animator().setFrame(targetFrame, display: true)
-                
-            }, completionHandler: {
-                // 动画完成后确保一切状态正确
-                self.updateWindowMaskForCurrentState()
-                
-                if let contentView = panel.contentView {
-                    contentView.wantsLayer = true
-                    let newRadius = collapsed ? 18.0 : 20.0
-                    contentView.layer?.cornerRadius = newRadius
-                }
-            })
-        }
+        // 使用NSAnimationContext确保所有属性同步动画
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            
+            // 窗口frame动画 - 这是主要动画
+            panel.animator().setFrame(targetFrame, display: true)
+            
+            // 同步动画其他属性 - Core Animation会自动插值
+            panel.contentView?.animator().layer?.cornerRadius = newRadius
+            // Note: NSPanel shadow properties are automatically animated when frame changes
+        }, completionHandler: {
+            // 动画完成后更新mask
+            self.updateWindowMaskForCurrentState()
+        })
     }
     
     private func makePanel() {
