@@ -270,32 +270,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     
-    // 完美的窗口变形动画 - 基于Apple最佳实践
+    // 全新的丝滑动画系统 - 采用弹性动画和精确锚点
     func toggleWindowState(collapsed: Bool) {
         guard let panel = panel else { return }
         
         isCollapsed = collapsed
-        let targetSize = collapsed ? collapsedSize : expandedSize
         
-        // 精确计算右上角锚点位置 - 确保折叠和展开一致
-        let currentFrame = panel.frame
-        var targetFrame = currentFrame
-        
-        // 始终保持右上角位置不变
-        targetFrame.origin.x = currentFrame.maxX - targetSize.width
-        targetFrame.origin.y = currentFrame.maxY - targetSize.height
-        targetFrame.size = targetSize
-        
-        // 立即通知SwiftUI开始内容动画
+        // 先通知SwiftUI状态变化
         NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
         
-        // 使用Apple推荐的简洁动画方式，避免掉帧
+        // 获取当前状态
+        let currentFrame = panel.frame
+        let targetSize = collapsed ? collapsedSize : expandedSize
+        
+        // 精确计算目标frame - 关键：固定右上角不动
+        var targetFrame = NSRect.zero
+        targetFrame.size = targetSize
+        
+        // 核心：确保右上角绝对固定
+        let fixedTopRightX = currentFrame.origin.x + currentFrame.size.width
+        let fixedTopRightY = currentFrame.origin.y + currentFrame.size.height
+        
+        targetFrame.origin.x = fixedTopRightX - targetSize.width
+        targetFrame.origin.y = fixedTopRightY - targetSize.height
+        
+        
+        // 使用NSAnimationContext的spring动画，这是macOS原生的丝滑方式
         NSAnimationContext.runAnimationGroup({ context in
-            // 优化的时长和缓动，平衡流畅度和性能
-            context.duration = 0.32
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            // 使用spring动画实现自然的弹性效果
+            context.duration = 0.5  // 稍长一些，让spring效果更明显
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.175, 0.885, 0.32, 1.275)  // spring曲线
+            context.allowsImplicitAnimation = true
             
-            // 核心动画：只关注窗口frame变化，让Core Animation处理细节
+            // 执行frame动画
             panel.animator().setFrame(targetFrame, display: true)
             
             // 同步圆角动画
@@ -304,9 +311,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let targetRadius = collapsed ? 18.0 : 20.0
                 contentView.animator().layer?.cornerRadius = targetRadius
             }
-            
         }, completionHandler: {
-            // 最小化完成处理，减少主线程负担
+            // 动画完成后更新mask
             self.updateWindowMaskForCurrentState()
         })
     }

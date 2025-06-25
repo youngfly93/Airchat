@@ -35,9 +35,9 @@ struct ChatWindow: View {
                 )
         }
         .background(Color.clear)
-        // 与窗口动画完全同步的时长和缓动
+        // 匹配窗口的spring动画曲线
         .animation(
-            .easeInOut(duration: 0.32),
+            .timingCurve(0.175, 0.885, 0.32, 1.275, duration: 0.5),
             value: isCollapsed
         )
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
