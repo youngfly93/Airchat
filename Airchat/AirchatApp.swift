@@ -284,37 +284,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         targetFrame.origin.y += panel.frame.height - targetSize.height
         targetFrame.size = targetSize
         
-        // 先通知SwiftUI内容开始变化
+        // 禁用隐式动画，使用显式控制
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        
+        // 立即通知SwiftUI内容开始变化（在窗口动画之前）
         NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
         
-        // 执行动画
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.35
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            context.allowsImplicitAnimation = true
-            
-            // 动画窗口frame
-            panel.animator().setFrame(targetFrame, display: true)
-            
-            // 动画圆角变化
-            if let contentView = panel.contentView {
-                contentView.wantsLayer = true
-                let newRadius = collapsed ? 18.0 : 20.0
+        CATransaction.commit()
+        
+        // 同时开始窗口和内容动画，确保同步
+        DispatchQueue.main.async {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.25
+                context.timingFunction = CAMediaTimingFunction(controlPoints: 0.25, 0.1, 0.25, 1.0)
+                context.allowsImplicitAnimation = true
                 
-                // 创建圆角动画
-                let animation = CABasicAnimation(keyPath: "cornerRadius")
-                animation.fromValue = contentView.layer?.cornerRadius ?? 20
-                animation.toValue = newRadius
-                animation.duration = 0.35
-                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                // 使用标准的窗口动画
+                panel.animator().setFrame(targetFrame, display: true)
                 
-                contentView.layer?.add(animation, forKey: "cornerRadius")
-                contentView.layer?.cornerRadius = newRadius
-            }
-        }, completionHandler: {
-            // 动画完成后更新mask
-            self.updateWindowMaskForCurrentState()
-        })
+            }, completionHandler: {
+                // 动画完成后确保一切状态正确
+                self.updateWindowMaskForCurrentState()
+                
+                if let contentView = panel.contentView {
+                    contentView.wantsLayer = true
+                    let newRadius = collapsed ? 18.0 : 20.0
+                    contentView.layer?.cornerRadius = newRadius
+                }
+            })
+        }
     }
     
     private func makePanel() {

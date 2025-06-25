@@ -12,30 +12,35 @@ import MarkdownUI
 struct ChatWindow: View {
     @StateObject private var vm = ChatVM()
     @State private var isCollapsed = false
+    @State private var animationProgress: Double = 0
     
     // 定义更柔和的蓝色
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
     
     var body: some View {
         ZStack {
-            // 使用opacity和scale动画来实现平滑过渡
-            if !isCollapsed {
-                expandedView
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 0.8)),
-                        removal: .opacity.combined(with: .scale(scale: 0.8))
-                    ))
-            }
+            // 总是渲染两个视图，通过opacity控制显示
+            expandedView
+                .opacity(isCollapsed ? 0 : 1)
+                .scaleEffect(
+                    isCollapsed ? 0.15 : 1.0,
+                    anchor: .topTrailing
+                )
+                .blur(radius: isCollapsed ? 2 : 0)  // 添加轻微模糊效果
             
-            if isCollapsed {
-                collapsedView
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 1.2)),
-                        removal: .opacity.combined(with: .scale(scale: 1.2))
-                    ))
-            }
+            collapsedView
+                .opacity(isCollapsed ? 1 : 0)
+                .scaleEffect(
+                    isCollapsed ? 1.0 : 6.0,
+                    anchor: .center
+                )
+                .blur(radius: isCollapsed ? 0 : 2)
         }
-        .animation(.easeInOut(duration: 0.35), value: isCollapsed)
+        .background(Color.clear)
+        .animation(
+            .timingCurve(0.25, 0.1, 0.25, 1.0, duration: 0.25),
+            value: isCollapsed
+        )
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
                let collapsed = userInfo["isCollapsed"] as? Bool {
