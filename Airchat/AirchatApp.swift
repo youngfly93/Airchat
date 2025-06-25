@@ -10,6 +10,10 @@ import AppKit
 import Foundation
 import KeyboardShortcuts
 
+extension Notification.Name {
+    static let windowStateChanged = Notification.Name("windowStateChanged")
+}
+
 extension NSBezierPath {
     var cgPath: CGPath {
         let path = CGMutablePath()
@@ -53,6 +57,10 @@ class KeyablePanel: NSPanel {
 struct AirchatApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
+    static var appDelegate: AppDelegate? {
+        NSApp.delegate as? AppDelegate
+    }
+    
     init() {
         // 注册全局快捷键回调
         KeyboardShortcuts.onKeyUp(for: .toggleWindow) {
@@ -89,6 +97,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var menu: NSMenu!
     private let windowPositionKey = "AirchatWindowPosition"
     private var hasRestoredPosition = false
+    private var isCollapsed = false
+    
+    // 定义折叠和展开的尺寸
+    private let collapsedSize = NSSize(width: 60, height: 60)
+    private let expandedSize = NSSize(width: 360, height: 520)
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Initialize API key securely
@@ -147,6 +160,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let panel = panel else { 
             print("Panel is nil!")
             return 
+        }
+        
+        // 确保窗口处于展开状态
+        if isCollapsed {
+            isCollapsed = false
+            let expandedFrame = NSRect(
+                x: panel.frame.origin.x,
+                y: panel.frame.origin.y,
+                width: expandedSize.width,
+                height: expandedSize.height
+            )
+            panel.setFrame(expandedFrame, display: false)
+            NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": false])
         }
         
         // Get the main screen bounds
@@ -244,9 +270,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     
+    // 添加动画切换方法
+    func toggleWindowState(collapsed: Bool) {
+        guard let panel = panel else { return }
+        
+        isCollapsed = collapsed
+        let targetSize = collapsed ? collapsedSize : expandedSize
+        
+        // 计算新的frame，保持窗口右上角位置不变（更自然的动画效果）
+        var targetFrame = panel.frame
+        let xDiff = panel.frame.width - targetSize.width
+        targetFrame.origin.x += xDiff
+        targetFrame.origin.y += panel.frame.height - targetSize.height
+        targetFrame.size = targetSize
+        
+        // 先通知SwiftUI内容开始变化
+        NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
+        
+        // 执行动画
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.35
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            context.allowsImplicitAnimation = true
+            
+            // 动画窗口frame
+            panel.animator().setFrame(targetFrame, display: true)
+            
+            // 动画圆角变化
+            if let contentView = panel.contentView {
+                contentView.wantsLayer = true
+                let newRadius = collapsed ? 18.0 : 20.0
+                
+                // 创建圆角动画
+                let animation = CABasicAnimation(keyPath: "cornerRadius")
+                animation.fromValue = contentView.layer?.cornerRadius ?? 20
+                animation.toValue = newRadius
+                animation.duration = 0.35
+                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                
+                contentView.layer?.add(animation, forKey: "cornerRadius")
+                contentView.layer?.cornerRadius = newRadius
+            }
+        }, completionHandler: {
+            // 动画完成后更新mask
+            self.updateWindowMaskForCurrentState()
+        })
+    }
+    
     private func makePanel() {
         panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: expandedSize.width, height: expandedSize.height),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: true
@@ -273,6 +346,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         contentView.layer?.backgroundColor = NSColor.clear.cgColor
         contentView.layer?.isOpaque = false
         
+        // 启用layer backing以支持动画
+        panel?.contentView?.wantsLayer = true
         panel?.contentView = contentView
         
         // Floato solution: Apply window-level corner mask and observe frame changes

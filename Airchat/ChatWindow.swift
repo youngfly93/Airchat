@@ -17,10 +17,30 @@ struct ChatWindow: View {
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
     
     var body: some View {
-        if isCollapsed {
-            collapsedView
-        } else {
-            expandedView
+        ZStack {
+            // 使用opacity和scale动画来实现平滑过渡
+            if !isCollapsed {
+                expandedView
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.8)),
+                        removal: .opacity.combined(with: .scale(scale: 0.8))
+                    ))
+            }
+            
+            if isCollapsed {
+                collapsedView
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 1.2)),
+                        removal: .opacity.combined(with: .scale(scale: 1.2))
+                    ))
+            }
+        }
+        .animation(.easeInOut(duration: 0.35), value: isCollapsed)
+        .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
+            if let userInfo = notification.userInfo,
+               let collapsed = userInfo["isCollapsed"] as? Bool {
+                isCollapsed = collapsed
+            }
         }
     }
     
@@ -41,9 +61,8 @@ struct ChatWindow: View {
             .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 8)
             .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
             .onTapGesture(count: 2) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                    isCollapsed = false
-                }
+                // 调用AppDelegate的动画方法
+                AirchatApp.appDelegate?.toggleWindowState(collapsed: false)
             }
     }
     
@@ -110,9 +129,8 @@ struct ChatWindow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 
                 Button(action: {
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                        isCollapsed = true
-                    }
+                    // 调用AppDelegate的动画方法
+                    AirchatApp.appDelegate?.toggleWindowState(collapsed: true)
                 }) {
                     Image(systemName: "minus.circle.fill")
                         .font(.system(size: 16, weight: .medium))
