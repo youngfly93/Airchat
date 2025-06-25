@@ -61,8 +61,7 @@ struct ChatWindow: View {
             .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 8)
             .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
             .onTapGesture(count: 2) {
-                // 调用AppDelegate的动画方法
-                AirchatApp.appDelegate?.toggleWindowState(collapsed: false)
+                WindowManager.shared.toggleWindowState(collapsed: false)
             }
     }
     
@@ -129,8 +128,7 @@ struct ChatWindow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 
                 Button(action: {
-                    // 调用AppDelegate的动画方法
-                    AirchatApp.appDelegate?.toggleWindowState(collapsed: true)
+                    WindowManager.shared.toggleWindowState(collapsed: true)
                 }) {
                     Image(systemName: "minus.circle.fill")
                         .font(.system(size: 16, weight: .medium))

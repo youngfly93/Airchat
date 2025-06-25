@@ -39,4 +39,8 @@ final class WindowManager: ObservableObject {
         appDelegate?.saveWindowPosition()
         appDelegate?.panel?.orderOut(nil)
     }
+    
+    func toggleWindowState(collapsed: Bool) {
+        appDelegate?.toggleWindowState(collapsed: collapsed)
+    }
 }
