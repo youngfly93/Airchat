@@ -270,49 +270,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     
-    // 全新的丝滑动画系统 - 采用弹性动画和精确锚点
+    // 简洁高效的窗口动画 - 专注解决跳帧问题
     func toggleWindowState(collapsed: Bool) {
         guard let panel = panel else { return }
         
         isCollapsed = collapsed
-        
-        // 先通知SwiftUI状态变化
-        NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
-        
-        // 获取当前状态
-        let currentFrame = panel.frame
         let targetSize = collapsed ? collapsedSize : expandedSize
         
-        // 精确计算目标frame - 关键：固定右上角不动
-        var targetFrame = NSRect.zero
+        // 计算目标frame，保持右上角固定
+        let currentFrame = panel.frame
+        var targetFrame = currentFrame
+        targetFrame.origin.x = currentFrame.maxX - targetSize.width
+        targetFrame.origin.y = currentFrame.maxY - targetSize.height
         targetFrame.size = targetSize
         
-        // 核心：确保右上角绝对固定
-        let fixedTopRightX = currentFrame.origin.x + currentFrame.size.width
-        let fixedTopRightY = currentFrame.origin.y + currentFrame.size.height
+        // 立即通知SwiftUI状态变化
+        NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
         
-        targetFrame.origin.x = fixedTopRightX - targetSize.width
-        targetFrame.origin.y = fixedTopRightY - targetSize.height
-        
-        
-        // 使用NSAnimationContext的spring动画，这是macOS原生的丝滑方式
+        // 使用最简单最可靠的动画方式
         NSAnimationContext.runAnimationGroup({ context in
-            // 使用spring动画实现自然的弹性效果
-            context.duration = 0.5  // 稍长一些，让spring效果更明显
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.175, 0.885, 0.32, 1.275)  // spring曲线
-            context.allowsImplicitAnimation = true
+            context.duration = 0.35
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             
-            // 执行frame动画
+            // 只动画窗口frame，其他的让系统自动处理
             panel.animator().setFrame(targetFrame, display: true)
-            
-            // 同步圆角动画
-            if let contentView = panel.contentView {
-                contentView.wantsLayer = true
-                let targetRadius = collapsed ? 18.0 : 20.0
-                contentView.animator().layer?.cornerRadius = targetRadius
-            }
         }, completionHandler: {
-            // 动画完成后更新mask
+            // 最小化完成后处理
             self.updateWindowMaskForCurrentState()
         })
     }

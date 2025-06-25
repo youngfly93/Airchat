@@ -19,31 +19,22 @@ struct ChatWindow: View {
     
     var body: some View {
         ZStack {
-            // 简洁高性能的内容动画，与窗口动画同步
-            expandedView
-                .opacity(isCollapsed ? 0 : 1)
-                .scaleEffect(
-                    isCollapsed ? 0.15 : 1.0,
-                    anchor: .topTrailing
-                )
-            
-            collapsedView
-                .opacity(isCollapsed ? 1 : 0)
-                .scaleEffect(
-                    isCollapsed ? 1.0 : 6.7,
-                    anchor: .center
-                )
+            // 简化内容动画，避免跳帧
+            if isCollapsed {
+                collapsedView
+                    .transition(.scale(scale: 0.1).combined(with: .opacity))
+            } else {
+                expandedView
+                    .transition(.scale(scale: 0.1).combined(with: .opacity))
+            }
         }
         .background(Color.clear)
-        // 匹配窗口的spring动画曲线
-        .animation(
-            .timingCurve(0.175, 0.885, 0.32, 1.275, duration: 0.5),
-            value: isCollapsed
-        )
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
                let collapsed = userInfo["isCollapsed"] as? Bool {
-                isCollapsed = collapsed
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    isCollapsed = collapsed
+                }
             }
         }
     }
