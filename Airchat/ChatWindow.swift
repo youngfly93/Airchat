@@ -8,6 +8,7 @@
 import SwiftUI
 import MarkdownUI
 
+
 struct ChatWindow: View {
     @StateObject private var vm = ChatVM()
     @State private var isCollapsed = false
@@ -210,17 +211,19 @@ struct ChatWindow: View {
                 // Add button on the left
                 addButton
                 
-                TextField("输入内容…", text: $vm.composing, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .lineLimit(1...5)
-                    .padding(12)
-                    .background(.thinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .onSubmit {
+                NoFocusRingTextField(
+                    text: $vm.composing,
+                    placeholder: "输入内容…",
+                    onSubmit: {
                         if !vm.isLoading {
                             vm.send()
                         }
                     }
+                )
+                .frame(minHeight: 20, maxHeight: 80)
+                .padding(12)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 
                 sendButton
             }

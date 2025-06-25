@@ -184,7 +184,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         panel.makeKeyAndOrderFront(nil)
-        panel.makeFirstResponder(panel.contentView)
+        // 不要让TextField成为第一响应者，避免显示焦点环
+        panel.makeFirstResponder(nil)
         NSApp.activate(ignoringOtherApps: true)
         
         // Apply mask after window is shown and sized
@@ -323,7 +324,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         
         // 确保窗口可以接受事件
         panel.makeKeyAndOrderFront(nil)
-        panel.makeFirstResponder(panel.contentView)
+        // 不要让TextField成为第一响应者
+        panel.makeFirstResponder(nil)
     }
     
     // Observe window frame changes to update mask and save position
