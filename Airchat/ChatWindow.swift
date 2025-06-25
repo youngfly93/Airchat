@@ -19,32 +19,40 @@ struct ChatWindow: View {
     
     var body: some View {
         ZStack {
-            // 总是渲染两个视图，通过opacity控制显示
+            // 连续变形动画：使用更自然的缩放和淡入淡出
             expandedView
                 .opacity(isCollapsed ? 0 : 1)
                 .scaleEffect(
-                    isCollapsed ? 0.15 : 1.0,
+                    isCollapsed ? 0.12 : 1.0,
                     anchor: .topTrailing
                 )
-                .blur(radius: isCollapsed ? 2 : 0)  // 添加轻微模糊效果
+                .blur(radius: isCollapsed ? 3 : 0)
+                // 添加旋转效果增强变形感
+                .rotationEffect(.degrees(isCollapsed ? 2 : 0))
             
             collapsedView
                 .opacity(isCollapsed ? 1 : 0)
                 .scaleEffect(
-                    isCollapsed ? 1.0 : 6.0,
+                    isCollapsed ? 1.0 : 8.5,
                     anchor: .center
                 )
-                .blur(radius: isCollapsed ? 0 : 2)
+                .blur(radius: isCollapsed ? 0 : 3)
+                // 反向旋转保持平衡
+                .rotationEffect(.degrees(isCollapsed ? 0 : -2))
         }
         .background(Color.clear)
+        // 分段动画：不同属性使用不同的时间曲线
         .animation(
-            .timingCurve(0.25, 0.1, 0.25, 1.0, duration: 0.3),
+            .timingCurve(0.25, 0.1, 0.25, 1.0, duration: 0.45),
             value: isCollapsed
         )
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
                let collapsed = userInfo["isCollapsed"] as? Bool {
-                isCollapsed = collapsed
+                // 使用withAnimation包装状态变化，确保动画触发
+                withAnimation(.timingCurve(0.25, 0.1, 0.25, 1.0, duration: 0.45)) {
+                    isCollapsed = collapsed
+                }
             }
         }
     }
