@@ -270,67 +270,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     
-    // 真正的连续变形动画 - 解决生硬和不连续问题
+    // 完美的窗口变形动画 - 基于Apple最佳实践
     func toggleWindowState(collapsed: Bool) {
         guard let panel = panel else { return }
         
         isCollapsed = collapsed
         let targetSize = collapsed ? collapsedSize : expandedSize
         
-        // 计算变形的关键帧
+        // 精确计算右上角锚点位置 - 确保折叠和展开一致
         let currentFrame = panel.frame
-        
-        // 对于折叠：从右上角开始收缩；对于展开：从右上角开始展开
         var targetFrame = currentFrame
-        if collapsed {
-            // 折叠：收缩到右上角位置
-            targetFrame.origin.x = currentFrame.maxX - targetSize.width
-            targetFrame.origin.y = currentFrame.maxY - targetSize.height
-        } else {
-            // 展开：从当前位置展开
-            targetFrame.origin.x = currentFrame.maxX - targetSize.width
-            targetFrame.origin.y = currentFrame.maxY - targetSize.height
-        }
+        
+        // 始终保持右上角位置不变
+        targetFrame.origin.x = currentFrame.maxX - targetSize.width
+        targetFrame.origin.y = currentFrame.maxY - targetSize.height
         targetFrame.size = targetSize
         
-        // 计算圆角变化 - 关键的morphing属性
-        let targetRadius = collapsed ? 18.0 : 20.0
-        
-        // 立即通知SwiftUI开始同步的内容变形
+        // 立即通知SwiftUI开始内容动画
         NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
         
-        // 使用更长的动画时间和真正的缓动曲线
+        // 使用Apple推荐的简洁动画方式，避免掉帧
         NSAnimationContext.runAnimationGroup({ context in
-            // 更长的动画时间让变形更平滑可见
-            context.duration = 0.45
-            // 使用自定义贝塞尔曲线，实现真正的"平稳刹车"效果
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.25, 0.1, 0.25, 1.0)
-            context.allowsImplicitAnimation = true
+            // 优化的时长和缓动，平衡流畅度和性能
+            context.duration = 0.32
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             
-            // 窗口frame的连续变形
+            // 核心动画：只关注窗口frame变化，让Core Animation处理细节
             panel.animator().setFrame(targetFrame, display: true)
             
-            // 确保内容视图layer存在并启用动画
+            // 同步圆角动画
             if let contentView = panel.contentView {
                 contentView.wantsLayer = true
-                contentView.layer?.masksToBounds = true
-                
-                // 圆角的连续变形 - 这是morphing的关键
+                let targetRadius = collapsed ? 18.0 : 20.0
                 contentView.animator().layer?.cornerRadius = targetRadius
-                
-                // 添加细微的缩放效果增强变形感
-                let scale = collapsed ? 0.95 : 1.0
-                contentView.animator().layer?.transform = CATransform3DMakeScale(scale, scale, 1.0)
             }
             
         }, completionHandler: {
-            // 动画完成后的清理工作
-            DispatchQueue.main.async {
-                // 重置transform
-                panel.contentView?.layer?.transform = CATransform3DIdentity
-                // 更新mask以匹配新状态
-                self.updateWindowMaskForCurrentState()
-            }
+            // 最小化完成处理，减少主线程负担
+            self.updateWindowMaskForCurrentState()
         })
     }
     
