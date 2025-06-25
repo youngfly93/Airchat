@@ -29,12 +29,16 @@ struct NoFocusRingTextField: NSViewRepresentable {
         textField.stringValue = text
         textField.isBordered = false
         textField.backgroundColor = .clear
+        textField.drawsBackground = false
         textField.focusRingType = .none
         textField.font = .systemFont(ofSize: 14)
         textField.lineBreakMode = .byWordWrapping
         textField.usesSingleLineMode = false
         textField.cell?.wraps = true
         textField.cell?.isScrollable = false
+        if let textFieldCell = textField.cell as? NSTextFieldCell {
+            textFieldCell.drawsBackground = false
+        }
         return textField
     }
     

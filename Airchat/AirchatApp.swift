@@ -270,7 +270,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     
-    // 简洁高效的窗口动画 - 专注解决跳帧问题
+    // 简洁流畅的窗口动画
     func toggleWindowState(collapsed: Bool) {
         guard let panel = panel else { return }
         
@@ -287,16 +287,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 立即通知SwiftUI状态变化
         NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
         
-        // 使用最简单最可靠的动画方式
+        // 最简洁的动画，避免复杂的layer操作
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.35
+            context.duration = 0.3
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             
-            // 只动画窗口frame，其他的让系统自动处理
+            // 只动画窗口frame
             panel.animator().setFrame(targetFrame, display: true)
         }, completionHandler: {
-            // 最小化完成后处理
-            self.updateWindowMaskForCurrentState()
+            // 动画完成后再更新mask，避免中途卡顿
+            DispatchQueue.main.async {
+                self.updateWindowMaskForCurrentState()
+            }
         })
     }
     
@@ -324,13 +326,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let contentView = NSHostingView(rootView: ChatWindow())
         contentView.translatesAutoresizingMaskIntoConstraints = false
         
-        // Make hosting view completely transparent
-        contentView.wantsLayer = true
-        contentView.layer?.backgroundColor = NSColor.clear.cgColor
-        contentView.layer?.isOpaque = false
+        // 完全透明的hosting view，避免额外的layer
+        contentView.wantsLayer = false  // 不强制启用layer
         
-        // 启用layer backing以支持动画
-        panel?.contentView?.wantsLayer = true
         panel?.contentView = contentView
         
         // Floato solution: Apply window-level corner mask and observe frame changes
@@ -428,28 +426,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         applyWindowMask(cornerRadius: cornerRadius)
     }
     
-    // Floato solution: Apply window-level corner mask
+    // 简化的窗口mask应用
     private func applyWindowMask(cornerRadius: CGFloat = 20) {
         guard let panel = panel, let contentView = panel.contentView else { return }
         
-        // Ensure contentView has layer
-        contentView.wantsLayer = true
-        
         DispatchQueue.main.async {
+            // 只有在需要时才启用layer
+            if !contentView.wantsLayer {
+                contentView.wantsLayer = true
+            }
+            
             let windowFrame = contentView.bounds
             guard windowFrame.width > 0 && windowFrame.height > 0 else { return }
             
-            // Create rounded rect path with specified corner radius
+            // 创建简单的rounded rect mask
             let path = NSBezierPath(roundedRect: windowFrame, xRadius: cornerRadius, yRadius: cornerRadius)
-            
-            // Create CAShapeLayer as mask
             let shapeLayer = CAShapeLayer()
             shapeLayer.path = path.cgPath
+            shapeLayer.fillRule = .evenOdd
             
-            // Apply mask to content view layer
+            // 确保layer设置正确
             if let layer = contentView.layer {
                 layer.mask = shapeLayer
                 layer.masksToBounds = true
+                layer.backgroundColor = NSColor.clear.cgColor
+                layer.isOpaque = false
             }
         }
     }

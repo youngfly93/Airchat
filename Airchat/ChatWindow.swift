@@ -19,20 +19,21 @@ struct ChatWindow: View {
     
     var body: some View {
         ZStack {
-            // 简化内容动画，避免跳帧
+            // 简洁的内容过渡
             if isCollapsed {
                 collapsedView
-                    .transition(.scale(scale: 0.1).combined(with: .opacity))
+                    .transition(.scale.combined(with: .opacity))
             } else {
                 expandedView
-                    .transition(.scale(scale: 0.1).combined(with: .opacity))
+                    .transition(.scale.combined(with: .opacity))
             }
         }
         .background(Color.clear)
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
                let collapsed = userInfo["isCollapsed"] as? Bool {
-                withAnimation(.easeInOut(duration: 0.35)) {
+                // 简洁的动画匹配AppKit
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     isCollapsed = collapsed
                 }
             }
@@ -231,16 +232,18 @@ struct ChatWindow: View {
                         }
                     }
                 )
-                .frame(minHeight: 20, maxHeight: 80)
-                .padding(12)
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .frame(minHeight: 16, idealHeight: 16, maxHeight: 50)
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(.thinMaterial)
+                )
                 
                 sendButton
             }
         }
         .padding(.horizontal, 16)
-        .padding(.bottom, 16)
+        .padding(.bottom, 8)
     }
     
     private var sendButton: some View {
