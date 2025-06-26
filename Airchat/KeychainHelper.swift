@@ -95,9 +95,9 @@ extension KeychainHelper {
     func setInitialAPIKey() {
         // Only set if no key exists
         if apiKey == nil {
-            // Temporarily set the API key for the user
-            apiKey = "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"
-            print("✅ API key has been set successfully")
+            // API key should be provided by the user
+            // Do not hardcode API keys in production code
+            print("⚠️ No API key configured. Please set one in the app settings.")
         } else {
             print("✅ API key already configured")
         }

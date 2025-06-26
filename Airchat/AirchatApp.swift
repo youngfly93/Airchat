@@ -70,23 +70,36 @@ struct AirchatApp: App {
     
     var body: some Scene {
         Settings {
-            VStack {
-                Text("Airchat 快捷键设置")
-                    .font(.headline)
-                    .padding(.bottom, 10)
+            TabView {
+                // 快捷键设置
+                VStack {
+                    Text("快捷键设置")
+                        .font(.headline)
+                        .padding(.bottom, 10)
+                    
+                    KeyboardShortcuts.Recorder(
+                        "展开/折叠浮窗:",
+                        name: .toggleWindow
+                    )
+                    
+                    Text("默认快捷键: ⌥ + Space")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 5)
+                }
+                .frame(width: 300, height: 150)
+                .padding()
+                .tabItem {
+                    Label("快捷键", systemImage: "keyboard")
+                }
                 
-                KeyboardShortcuts.Recorder(
-                    "展开/折叠浮窗:",
-                    name: .toggleWindow
-                )
-                
-                Text("默认快捷键: ⌥ + Space")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 5)
+                // API Key 设置
+                APIKeySettingsView()
+                    .tabItem {
+                        Label("API Key", systemImage: "key.fill")
+                    }
             }
-            .frame(width: 300, height: 150)
-            .padding()
+            .frame(width: 400, height: 200)
         }
     }
 }
@@ -142,6 +155,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let resetPositionItem = NSMenuItem(title: "重置窗口位置", action: #selector(resetWindowPosition), keyEquivalent: "")
         resetPositionItem.target = self
         menu.addItem(resetPositionItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        let settingsItem = NSMenuItem(title: "设置...", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
         
         menu.addItem(NSMenuItem.separator())
         
@@ -253,7 +272,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc private func quitApp() {
+        // 清理动画资源
+        stopAnimation()
         NSApplication.shared.terminate(nil)
+    }
+    
+    deinit {
+        // 确保DisplayLink被清理
+        stopAnimation()
+        NotificationCenter.default.removeObserver(self)
     }
     
     @objc private func resetWindowPosition() {
@@ -269,37 +296,136 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    @objc private func openSettings() {
+        // Open Settings window
+        if let settingsWindow = NSApp.windows.first(where: { $0.title == "Settings" || $0.title == "设置" }) {
+            settingsWindow.makeKeyAndOrderFront(nil)
+        } else {
+            // Try to open settings using the Settings scene
+            for window in NSApp.windows {
+                if window.identifier?.rawValue == "com.apple.SwiftUI.Settings" {
+                    window.makeKeyAndOrderFront(nil)
+                    return
+                }
+            }
+            // If Settings window doesn't exist, use the menu command
+            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        }
+    }
     
-    // 简洁流畅的窗口动画
+    
+    // 优化的窗口动画系统
+    private var animationTimer: Timer?
+    private var animationStartTime: CFTimeInterval = 0
+    private var animationDuration: CFTimeInterval = 0.35
+    private var startFrame = NSRect.zero
+    private var targetFrame = NSRect.zero
+    private var isAnimating = false
+    
     func toggleWindowState(collapsed: Bool) {
         guard let panel = panel else { return }
+        
+        // 如果正在动画，先停止
+        stopAnimation()
         
         isCollapsed = collapsed
         let targetSize = collapsed ? collapsedSize : expandedSize
         
-        // 计算目标frame，保持右上角固定
-        let currentFrame = panel.frame
-        var targetFrame = currentFrame
-        targetFrame.origin.x = currentFrame.maxX - targetSize.width
-        targetFrame.origin.y = currentFrame.maxY - targetSize.height
+        // 计算动画参数
+        startFrame = panel.frame
+        targetFrame = startFrame
+        targetFrame.origin.x = startFrame.maxX - targetSize.width
+        targetFrame.origin.y = startFrame.maxY - targetSize.height
         targetFrame.size = targetSize
         
-        // 立即通知SwiftUI状态变化
+        // 提前通知SwiftUI准备动画
         NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
         
-        // 最简洁的动画，避免复杂的layer操作
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.3
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            
-            // 只动画窗口frame
-            panel.animator().setFrame(targetFrame, display: true)
-        }, completionHandler: {
-            // 动画完成后再更新mask，避免中途卡顿
-            DispatchQueue.main.async {
-                self.updateWindowMaskForCurrentState()
-            }
-        })
+        // 使用Timer实现高帧率动画
+        startTimerAnimation()
+    }
+    
+    private func startTimerAnimation() {
+        guard let panel = panel else { return }
+        
+        isAnimating = true
+        animationStartTime = CACurrentMediaTime()
+        
+        // 开始性能监测
+        AnimationPerformanceMonitor.shared.startMonitoring()
+        
+        // 创建高精度定时器（60fps = 16.67ms间隔）
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
+            self?.updateAnimation()
+        }
+        
+        // 设置定时器优先级
+        RunLoop.current.add(animationTimer!, forMode: .common)
+        
+        // 保持VisualEffectView兼容性
+        panel.displaysWhenScreenProfileChanges = false
+    }
+    
+    private func updateAnimation() {
+        guard let panel = panel, isAnimating else {
+            stopAnimation()
+            return
+        }
+        
+        // 记录帧性能
+        AnimationPerformanceMonitor.shared.recordFrame()
+        
+        let currentTime = CACurrentMediaTime()
+        let elapsed = currentTime - animationStartTime
+        let progress = min(elapsed / animationDuration, 1.0)
+        
+        // 使用优化的缓动函数
+        let easedProgress = easeInOutCubic(progress)
+        
+        // 计算插值frame
+        let currentFrame = NSRect(
+            x: lerp(startFrame.origin.x, targetFrame.origin.x, easedProgress),
+            y: lerp(startFrame.origin.y, targetFrame.origin.y, easedProgress),
+            width: lerp(startFrame.width, targetFrame.width, easedProgress),
+            height: lerp(startFrame.height, targetFrame.height, easedProgress)
+        )
+        
+        // 设置frame并保持视觉效果
+        panel.setFrame(currentFrame, display: true, animate: false)
+        
+        // 动画完成
+        if progress >= 1.0 {
+            stopAnimation()
+            // 最后更新mask
+            updateWindowMaskForCurrentState()
+        }
+    }
+    
+    private func stopAnimation() {
+        animationTimer?.invalidate()
+        animationTimer = nil
+        isAnimating = false
+        
+        // 停止性能监测
+        AnimationPerformanceMonitor.shared.stopMonitoring()
+        
+        // 恢复正常的窗口设置
+        panel?.displaysWhenScreenProfileChanges = true
+    }
+    
+    // 优化的缓动函数
+    private func easeInOutCubic(_ t: Double) -> Double {
+        if t < 0.5 {
+            return 4 * t * t * t
+        } else {
+            let p = 2 * t - 2
+            return 1 + p * p * p / 2
+        }
+    }
+    
+    // 线性插值
+    private func lerp(_ start: Double, _ end: Double, _ progress: Double) -> Double {
+        return start + (end - start) * progress
     }
     
     private func makePanel() {
@@ -326,8 +452,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let contentView = NSHostingView(rootView: ChatWindow())
         contentView.translatesAutoresizingMaskIntoConstraints = false
         
-        // 完全透明的hosting view，避免额外的layer
-        contentView.wantsLayer = false  // 不强制启用layer
+        // 确保VisualEffectView能正常工作
+        contentView.wantsLayer = true
+        contentView.layer?.backgroundColor = NSColor.clear.cgColor
+        contentView.layer?.isOpaque = false
         
         panel?.contentView = contentView
         

@@ -14,14 +14,19 @@ struct VisualEffectView: NSViewRepresentable {
     
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
-        view.material = .hudWindow  // 使用 hudWindow 材质
-        view.blendingMode = .behindWindow  // 使用 behindWindow 混合模式
+        view.material = material
+        view.blendingMode = blendingMode
         view.state = .active
         view.wantsLayer = true
         
-        // 确保视觉效果视图是透明的
+        // 优化视觉效果视图以兼容动画
         view.layer?.backgroundColor = NSColor.clear.cgColor
         view.layer?.isOpaque = false
+        view.layer?.contentsScale = NSScreen.main?.backingScaleFactor ?? 2.0
+        
+        // 确保在动画期间保持视觉效果
+        view.layer?.needsDisplayOnBoundsChange = true
+        view.layer?.contentsGravity = .resize
         
         return view
     }

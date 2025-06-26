@@ -19,21 +19,27 @@ struct ChatWindow: View {
     
     var body: some View {
         ZStack {
-            // 简洁的内容过渡
+            // 优化的内容过渡
             if isCollapsed {
                 collapsedView
-                    .transition(.scale.combined(with: .opacity))
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.8).combined(with: .opacity),
+                        removal: .scale(scale: 1.2).combined(with: .opacity)
+                    ))
             } else {
                 expandedView
-                    .transition(.scale.combined(with: .opacity))
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 1.2).combined(with: .opacity),
+                        removal: .scale(scale: 0.8).combined(with: .opacity)
+                    ))
             }
         }
         .background(Color.clear)
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
                let collapsed = userInfo["isCollapsed"] as? Bool {
-                // 简洁的动画匹配AppKit
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                // 匹配AppKit的动画时长和缓动
+                withAnimation(.timingCurve(0.42, 0, 0.58, 1, duration: 0.35)) {
                     isCollapsed = collapsed
                 }
             }
@@ -46,16 +52,15 @@ struct ChatWindow: View {
             .foregroundColor(softBlue)
             .frame(width: 60, height: 60)
             .background(
-                VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
+                AnimationCompatibleVisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
             )
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .compositingGroup()
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(Color.white.opacity(0.3), lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 8)
-            .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
+            // 简化阴影以提高性能
+            .shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 6)
             .onTapGesture(count: 2) {
                 WindowManager.shared.toggleWindowState(collapsed: false)
             }
@@ -71,16 +76,15 @@ struct ChatWindow: View {
         }
         .frame(width: 360, height: 520)
         .background(
-            VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
+            AnimationCompatibleVisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
         )
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .compositingGroup()
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.white.opacity(0.2), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 8)
-        .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
+        // 简化阴影以提高性能
+        .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
         .focusable()
         .onKeyPress { press in
             if press.key == .init("v") && press.modifiers.contains(.command) {
@@ -94,6 +98,9 @@ struct ChatWindow: View {
                 modelConfig: vm.modelConfig,
                 isPresented: $vm.showModelSelection
             )
+        }
+        .sheet(isPresented: $vm.showAPIKeyInput) {
+            APIKeyInputView(isPresented: $vm.showAPIKeyInput)
         }
     }
     

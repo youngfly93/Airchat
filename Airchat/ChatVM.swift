@@ -22,6 +22,7 @@ final class ChatVM: ObservableObject {
     @Published var shouldScrollToBottom = false
     @Published var showFileImporter = false
     @Published var animatingImageIDs = Set<UUID>()
+    @Published var showAPIKeyInput = false
     
     private let api = ArkChatAPI()
     private var scrollUpdateTimer: Timer?
@@ -62,6 +63,12 @@ final class ChatVM: ObservableObject {
     
     func send() {
         guard !composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedImages.isEmpty else { return }
+        
+        // Check if API key is set
+        if KeychainHelper.shared.apiKey == nil || KeychainHelper.shared.apiKey?.isEmpty == true {
+            showAPIKeyInput = true
+            return
+        }
         
         let messageContent: MessageContent
         if selectedImages.isEmpty {
