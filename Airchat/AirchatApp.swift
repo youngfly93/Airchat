@@ -317,7 +317,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // 优化的窗口动画系统
     private var animationTimer: Timer?
     private var animationStartTime: CFTimeInterval = 0
-    private var animationDuration: CFTimeInterval = 0.35
+    private var animationDuration: CFTimeInterval = 0.2
     private var startFrame = NSRect.zero
     private var targetFrame = NSRect.zero
     private var isAnimating = false
@@ -338,10 +338,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         targetFrame.origin.y = startFrame.maxY - targetSize.height
         targetFrame.size = targetSize
         
-        // 提前通知SwiftUI准备动画
+        // 立即切换SwiftUI内容
         NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
         
-        // 使用Timer实现高帧率动画
+        // 立即开始窗口尺寸动画
         startTimerAnimation()
     }
     

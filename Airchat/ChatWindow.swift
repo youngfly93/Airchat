@@ -12,36 +12,26 @@ import MarkdownUI
 struct ChatWindow: View {
     @StateObject private var vm = ChatVM()
     @State private var isCollapsed = false
-    @State private var animationProgress: Double = 0
+    @State private var animationProgress: Double = 1.0
     
     // 定义更柔和的蓝色
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
     
     var body: some View {
-        ZStack {
-            // 优化的内容过渡
+        // 简单的即时切换，避免任何SwiftUI动画重影
+        Group {
             if isCollapsed {
                 collapsedView
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.8).combined(with: .opacity),
-                        removal: .scale(scale: 1.2).combined(with: .opacity)
-                    ))
             } else {
                 expandedView
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 1.2).combined(with: .opacity),
-                        removal: .scale(scale: 0.8).combined(with: .opacity)
-                    ))
             }
         }
         .background(Color.clear)
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
                let collapsed = userInfo["isCollapsed"] as? Bool {
-                // 匹配AppKit的动画时长和缓动
-                withAnimation(.timingCurve(0.42, 0, 0.58, 1, duration: 0.35)) {
-                    isCollapsed = collapsed
-                }
+                // 立即切换，不使用任何SwiftUI动画
+                isCollapsed = collapsed
             }
         }
     }
