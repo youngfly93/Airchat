@@ -463,10 +463,10 @@ struct ChatWindow: View {
     
     // MARK: - 增强的底部输入区组件
     
-    // 增强的输入框 - 稍高一些 + 文字居中 + 毛玻璃背景 + 焦点边框
+    // 增强的输入框 - 合适高度 + 上下居中 + 毛玻璃背景 + 焦点边框
     private var enhancedInputField: some View {
         ZStack {
-            // 占位符文本 - 垂直居中
+            // 占位符文本 - 完全居中
             if vm.composing.isEmpty {
                 HStack {
                     Text("输入内容…")
@@ -481,19 +481,17 @@ struct ChatWindow: View {
             TextEditor(text: $vm.composing)
                 .font(.system(size: 14))
                 .scrollContentBackground(.hidden) // 隐藏默认背景
-                .frame(height: 40) // 稍微增加高度到40px
                 .padding(.horizontal, 8)
-                .padding(.top, 8) // 增加顶部内边距，让文字下移
-                .padding(.bottom, 4) // 底部稍微少一些
+                .padding(.vertical, 8) // 增加垂直内边距确保居中
                 .onTapGesture {
                     isInputFocused = true
                 }
         }
-        .frame(height: 40) // 确保整体容器高度
+        .frame(height: 42) // 稍微增加高度到42px
         .background(.regularMaterial) // 毛玻璃背景
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous)) // 调整圆角
+        .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous)) // 调整圆角匹配高度
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 21, style: .continuous)
                 .strokeBorder(
                     isInputFocused ? softBlue.opacity(0.6) : Color.clear,
                     lineWidth: 1
@@ -501,7 +499,7 @@ struct ChatWindow: View {
                 .animation(.easeInOut(duration: 0.2), value: isInputFocused)
         )
         .onTapGesture {
-            // 外层点击也能获得焦点
+            isInputFocused = true
         }
     }
     
