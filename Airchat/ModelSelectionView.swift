@@ -26,11 +26,8 @@ struct ModelSelectionView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .compositingGroup()
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-        )
         .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+        .focusable(false) // 禁用焦点环
     }
     
     private var headerView: some View {
@@ -55,6 +52,7 @@ struct ModelSelectionView: View {
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
+            .focusable(false) // 禁用焦点环
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
@@ -187,6 +185,7 @@ struct ModelCard: View {
             }
         }
         .scaleEffect(isHovered ? 1.02 : 1.0)
+        .focusable(false) // 禁用焦点环
     }
     
     private func formatContextWindow(_ tokens: Int) -> String {

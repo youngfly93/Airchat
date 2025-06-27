@@ -95,6 +95,12 @@ struct ChatWindow: View {
             }
             return .ignored
         }
+        .onTapGesture {
+            // 点击其他区域时，如果输入框为空则重置焦点状态
+            if vm.composing.isEmpty {
+                isInputFocused = false
+            }
+        }
         .sheet(isPresented: $vm.showModelSelection) {
             ModelSelectionView(
                 modelConfig: vm.modelConfig,
@@ -466,8 +472,8 @@ struct ChatWindow: View {
     // 增强的输入框 - 合适高度 + 上下居中 + 毛玻璃背景 + 焦点边框
     private var enhancedInputField: some View {
         ZStack {
-            // 占位符文本 - 完全居中
-            if vm.composing.isEmpty {
+            // 占位符文本 - 只在没有内容且没有焦点时显示
+            if vm.composing.isEmpty && !isInputFocused {
                 HStack {
                     Text("输入内容…")
                         .font(.system(size: 14))
@@ -485,6 +491,12 @@ struct ChatWindow: View {
                 .padding(.vertical, 8) // 增加垂直内边距确保居中
                 .onTapGesture {
                     isInputFocused = true
+                }
+                .onChange(of: vm.composing) { oldValue, newValue in
+                    // 当开始输入时，确保占位符消失
+                    if !newValue.isEmpty {
+                        isInputFocused = true
+                    }
                 }
         }
         .frame(height: 42) // 稍微增加高度到42px
