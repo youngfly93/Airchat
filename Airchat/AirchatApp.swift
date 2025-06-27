@@ -325,6 +325,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func toggleWindowState(collapsed: Bool) {
         guard let panel = panel else { return }
         
+        // 如果已经是目标状态，直接返回
+        if isCollapsed == collapsed {
+            print("窗口已经是目标状态: \(collapsed ? "折叠" : "展开")")
+            return
+        }
+        
         // 如果正在动画，先停止
         stopAnimation()
         

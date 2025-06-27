@@ -37,23 +37,58 @@ struct ChatWindow: View {
     }
     
     private var collapsedView: some View {
-        Image(systemName: "bubble.left.and.bubble.right.fill")
-            .font(.title2)
-            .foregroundColor(softBlue)
-            .frame(width: 60, height: 60)
-            .background(
-                AnimationCompatibleVisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-            )
-            // 简化阴影以提高性能
-            .shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 6)
-            .onTapGesture(count: 2) {
-                WindowManager.shared.toggleWindowState(collapsed: false)
+        ZStack {
+            // 主要点击区域 - 单击展开
+            Rectangle()
+                .fill(Color.clear)
+                .frame(width: 60, height: 60)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    WindowManager.shared.toggleWindowState(collapsed: false)
+                }
+            
+            // 主图标 - 不可点击
+            Image(systemName: "bubble.left.and.bubble.right.fill")
+                .font(.title2)
+                .foregroundColor(softBlue)
+                .allowsHitTesting(false)
+            
+            // 右下角小图标显示当前模型（简化版）- 独立点击区域
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        vm.showModelSelection = true
+                    }) {
+                        Image(systemName: "cpu")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundColor(.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: 18, height: 18) // 稍微增大点击区域
+                    .background(.regularMaterial)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.primary.opacity(0.2), lineWidth: 0.5)
+                    )
+                    .offset(x: -3, y: -3)
+                    .zIndex(1) // 确保在最上层
+                }
             }
+        }
+        .frame(width: 60, height: 60)
+        .background(
+            AnimationCompatibleVisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+        )
+        // 简化阴影以提高性能
+        .shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 6)
     }
     
     private var expandedView: some View {
@@ -92,58 +127,72 @@ struct ChatWindow: View {
         .sheet(isPresented: $vm.showAPIKeyInput) {
             APIKeyInputView(isPresented: $vm.showAPIKeyInput)
         }
+        .alert("清空聊天记录", isPresented: $vm.showClearConfirmation) {
+            Button("取消", role: .cancel) { }
+            Button("清空", role: .destructive) {
+                vm.clearChat()
+            }
+        } message: {
+            Text("确定要清空所有聊天记录吗？此操作无法撤销。")
+        }
     }
     
     private var headerView: some View {
-        HStack {
-            Text("AI Chat")
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundColor(.primary)
+        HStack(spacing: 0) {
+            // 左侧窗口控制区域
+            HStack(spacing: 8) {
+                // 重新构建的折叠按钮
+                collapseButton
+                
+                // 标题 - 更靠左对齐
+                Text("AI Chat")
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+            
             Spacer()
             
-            HStack(spacing: 12) {
+            // 右侧工具栏 - 统一视觉层级
+            HStack(spacing: 8) {
+                // 模式选择器 - 统一样式
                 Button(action: {
                     vm.showModelSelection = true
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: "cpu")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                         Text(vm.modelConfig.selectedModel.name)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .lineLimit(1)
                     }
-                    .foregroundColor(softBlue)
+                    .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                
-                Button(action: {
-                    WindowManager.shared.toggleWindowState(collapsed: true)
-                }) {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-                .frame(width: 28, height: 28)
-                .background(.thinMaterial)
-                .clipShape(Circle())
-                
-                Button(action: {
-                    vm.clearChat()
-                }) {
-                    Text("Clear")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(softBlue)
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .background(.regularMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+                )
+                
+                // 清空按钮 - 改为垃圾桶图标，统一样式
+                Button(action: {
+                    vm.showClearConfirmation = true
+                }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.primary)
+                }
+                .buttonStyle(.plain)
+                .frame(width: 32, height: 32)
+                .background(.regularMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+                )
             }
         }
         .padding(.horizontal, 16)
@@ -442,5 +491,25 @@ struct ChatWindow: View {
                 }
             }
         }
+    }
+    
+    // 全新构建的折叠按钮 - 与其他按钮样式协调
+    private var collapseButton: some View {
+        Circle()
+            .fill(.regularMaterial)
+            .frame(width: 24, height: 24)
+            .overlay(
+                // 减号图标 - 调整颜色和字体以匹配其他按钮
+                Text("−")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.primary) // 使用primary颜色与其他按钮一致
+            )
+            .overlay(
+                Circle()
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 0.5) // 与其他按钮边框一致
+            )
+            .onTapGesture {
+                WindowManager.shared.toggleWindowState(collapsed: true)
+            }
     }
 }

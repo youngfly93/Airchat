@@ -23,6 +23,7 @@ final class ChatVM: ObservableObject {
     @Published var showFileImporter = false
     @Published var animatingImageIDs = Set<UUID>()
     @Published var showAPIKeyInput = false
+    @Published var showClearConfirmation = false
     
     private let api = ArkChatAPI()
     private var scrollUpdateTimer: Timer?
