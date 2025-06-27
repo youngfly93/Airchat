@@ -13,6 +13,7 @@ struct ChatWindow: View {
     @StateObject private var vm = ChatVM()
     @State private var isCollapsed = false
     @State private var animationProgress: Double = 1.0
+    @State private var isInputFocused = false
     
     // 定义更柔和的蓝色
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
@@ -53,30 +54,6 @@ struct ChatWindow: View {
                 .foregroundColor(softBlue)
                 .allowsHitTesting(false)
             
-            // 右下角小图标显示当前模型（简化版）- 独立点击区域
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        vm.showModelSelection = true
-                    }) {
-                        Image(systemName: "cpu")
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundColor(.primary)
-                    }
-                    .buttonStyle(.plain)
-                    .frame(width: 18, height: 18) // 稍微增大点击区域
-                    .background(.regularMaterial)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.primary.opacity(0.2), lineWidth: 0.5)
-                    )
-                    .offset(x: -3, y: -3)
-                    .zIndex(1) // 确保在最上层
-                }
-            }
         }
         .frame(width: 60, height: 60)
         .background(
@@ -144,10 +121,19 @@ struct ChatWindow: View {
                 // 重新构建的折叠按钮
                 collapseButton
                 
-                // 标题 - 更靠左对齐
-                Text("AI Chat")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundColor(.primary)
+                // Logo图标 - 更大尺寸
+                if let logoImage = NSImage(named: "MenuIcon") {
+                    Image(nsImage: logoImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 28, height: 28)
+                        .foregroundStyle(.primary)
+                } else {
+                    // 备用图标
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.primary)
+                }
             }
             
             Spacer()
@@ -266,71 +252,20 @@ struct ChatWindow: View {
             }
             
             HStack(alignment: .bottom, spacing: 12) {
-                // Add button on the left
-                addButton
+                // 改进的添加按钮 - 与发送按钮保持一致的圆形设计
+                enhancedAddButton
                 
-                NoFocusRingTextField(
-                    text: $vm.composing,
-                    placeholder: "输入内容…",
-                    onSubmit: {
-                        if !vm.isLoading {
-                            vm.send()
-                        }
-                    }
-                )
-                .frame(minHeight: 16, idealHeight: 16, maxHeight: 50)
-                .padding(6)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.thinMaterial)
-                )
+                // 改进的输入框 - 自适应高度 + 毛玻璃背景 + 焦点边框
+                enhancedInputField
                 
-                sendButton
+                // 改进的发送按钮 - 添加快捷键提示
+                enhancedSendButton
             }
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
     }
     
-    private var sendButton: some View {
-        let isEmpty = vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && vm.selectedImages.isEmpty
-        let isDisabled = isEmpty || vm.isLoading
-        
-        return Button(action: {
-            vm.send()
-        }) {
-            Image(systemName: "paperplane.fill")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(isDisabled ? .secondary : .white)
-        }
-        .buttonStyle(.plain)
-        .frame(width: 36, height: 36)
-        .background(isDisabled ? Color.gray.opacity(0.3) : softBlue)
-        .clipShape(Circle())
-        .disabled(isDisabled)
-        .keyboardShortcut(.return, modifiers: [.command])
-    }
-    
-    private var addButton: some View {
-        Button(action: {
-            vm.showFileImporter = true
-        }) {
-            Image(systemName: "plus")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(softBlue)
-        }
-        .buttonStyle(.plain)
-        .frame(width: 36, height: 36)
-        .background(.ultraThinMaterial)
-        .clipShape(Circle())
-        .fileImporter(
-            isPresented: $vm.showFileImporter,
-            allowedContentTypes: [.image, .pdf],
-            allowsMultipleSelection: true
-        ) { result in
-            vm.handleFileSelection(result)
-        }
-    }
     
     private var imagePreviewSection: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -447,8 +382,21 @@ struct ChatWindow: View {
             }
             .padding(12)
             .background(
-                VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                Group {
+                    if message.role == .assistant {
+                        // AI消息 - 浅灰色毛玻璃背景
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(.ultraThickMaterial)
+                    } else {
+                        // 用户消息 - 蓝色主题背景
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(softBlue.opacity(0.15))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(softBlue.opacity(0.3), lineWidth: 0.5)
+                            )
+                    }
+                }
             )
                 .shadow(color: .black.opacity(0.12), radius: 4, x: 0, y: 2)
             
@@ -511,5 +459,93 @@ struct ChatWindow: View {
             .onTapGesture {
                 WindowManager.shared.toggleWindowState(collapsed: true)
             }
+    }
+    
+    // MARK: - 增强的底部输入区组件
+    
+    // 增强的输入框 - 稍高一些 + 文字居中 + 毛玻璃背景 + 焦点边框
+    private var enhancedInputField: some View {
+        ZStack {
+            // 占位符文本 - 垂直居中
+            if vm.composing.isEmpty {
+                HStack {
+                    Text("输入内容…")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 12)
+                    Spacer()
+                }
+                .allowsHitTesting(false)
+            }
+            
+            TextEditor(text: $vm.composing)
+                .font(.system(size: 14))
+                .scrollContentBackground(.hidden) // 隐藏默认背景
+                .frame(height: 40) // 稍微增加高度到40px
+                .padding(.horizontal, 8)
+                .padding(.top, 8) // 增加顶部内边距，让文字下移
+                .padding(.bottom, 4) // 底部稍微少一些
+                .onTapGesture {
+                    isInputFocused = true
+                }
+        }
+        .frame(height: 40) // 确保整体容器高度
+        .background(.regularMaterial) // 毛玻璃背景
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous)) // 调整圆角
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(
+                    isInputFocused ? softBlue.opacity(0.6) : Color.clear,
+                    lineWidth: 1
+                )
+                .animation(.easeInOut(duration: 0.2), value: isInputFocused)
+        )
+        .onTapGesture {
+            // 外层点击也能获得焦点
+        }
+    }
+    
+    // 增强的发送按钮 - 添加快捷键提示
+    private var enhancedSendButton: some View {
+        let isEmpty = vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && vm.selectedImages.isEmpty
+        let isDisabled = isEmpty || vm.isLoading
+        
+        return Button(action: {
+            vm.send()
+        }) {
+            Image(systemName: "paperplane.fill")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(isDisabled ? .secondary : .white)
+        }
+        .buttonStyle(.plain)
+        .frame(width: 36, height: 36)
+        .background(isDisabled ? Color.gray.opacity(0.3) : softBlue)
+        .clipShape(Circle())
+        .disabled(isDisabled)
+        .keyboardShortcut(.return, modifiers: [.command])
+        .help("⌘↩︎ 发送") // 快捷键提示
+    }
+    
+    // 增强的添加按钮 - 与发送按钮保持一致的圆形设计
+    private var enhancedAddButton: some View {
+        Button(action: {
+            vm.showFileImporter = true
+        }) {
+            Image(systemName: "plus")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.primary)
+        }
+        .buttonStyle(.plain)
+        .frame(width: 36, height: 36)
+        .background(.regularMaterial) // 改为regularMaterial保持一致
+        .clipShape(Circle())
+        .fileImporter(
+            isPresented: $vm.showFileImporter,
+            allowedContentTypes: [.image, .pdf],
+            allowsMultipleSelection: true
+        ) { result in
+            vm.handleFileSelection(result)
+        }
+        .help("添加文件或图片")
     }
 }
