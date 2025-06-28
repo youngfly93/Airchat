@@ -11,6 +11,18 @@ struct StreamingChunk {
     let content: String?
     let reasoning: String?
     let thinking: String?
+    let toolCalls: [ToolCall]?
+}
+
+struct ToolCall: Codable {
+    let id: String
+    let type: String
+    let function: ToolCallFunction
+}
+
+struct ToolCallFunction: Codable {
+    let name: String
+    let arguments: String
 }
 
 struct StreamResponse: Codable {
@@ -24,9 +36,10 @@ struct StreamResponse: Codable {
         let content: String?
         let reasoning: String?
         let thinking: String?
+        let tool_calls: [ToolCall]?
         
         private enum CodingKeys: String, CodingKey {
-            case content, reasoning, thinking
+            case content, reasoning, thinking, tool_calls
         }
     }
 }
@@ -46,10 +59,34 @@ final class ArkChatAPI {
         let stream: Bool
         let include_reasoning: Bool
         let reasoning: ReasoningConfig?
+        let tools: [Tool]?
+        let tool_choice: String?
     }
     
     struct ReasoningConfig: Codable {
         let effort: String
+    }
+    
+    struct Tool: Codable {
+        let type: String
+        let function: ToolFunction
+    }
+    
+    struct ToolFunction: Codable {
+        let name: String
+        let description: String
+        let parameters: ToolParameters
+    }
+    
+    struct ToolParameters: Codable {
+        let type: String
+        let properties: [String: ParameterProperty]
+        let required: [String]
+    }
+    
+    struct ParameterProperty: Codable {
+        let type: String
+        let description: String
     }
     
     struct APIMessage: Codable {
@@ -83,7 +120,7 @@ final class ArkChatAPI {
         }
     }
     
-    func send(messages: [ChatMessage], stream: Bool = true, model: String? = nil) async throws -> AsyncThrowingStream<StreamingChunk, Error> {
+    func send(messages: [ChatMessage], stream: Bool = true, model: String? = nil, enableWebSearch: Bool = false) async throws -> AsyncThrowingStream<StreamingChunk, Error> {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -115,12 +152,41 @@ final class ArkChatAPI {
             reasoningConfig = ReasoningConfig(effort: "high")
         }
         
+        // 构建工具定义
+        var tools: [Tool]? = nil
+        var toolChoice: String? = nil
+        
+        if enableWebSearch {
+            tools = [
+                Tool(
+                    type: "function",
+                    function: ToolFunction(
+                        name: "web_search",
+                        description: "Search the web for current information",
+                        parameters: ToolParameters(
+                            type: "object",
+                            properties: [
+                                "query": ParameterProperty(
+                                    type: "string", 
+                                    description: "The search query"
+                                )
+                            ],
+                            required: ["query"]
+                        )
+                    )
+                )
+            ]
+            toolChoice = "auto"
+        }
+        
         let payload = Payload(
             model: modelToUse, 
             messages: apiMessages, 
             stream: stream, 
             include_reasoning: supportsReasoning,
-            reasoning: reasoningConfig
+            reasoning: reasoningConfig,
+            tools: tools,
+            tool_choice: toolChoice
         )
         request.httpBody = try JSONEncoder().encode(payload)
         
@@ -179,7 +245,8 @@ final class ArkChatAPI {
                                 let chunk = StreamingChunk(
                                     content: delta.content,
                                     reasoning: delta.reasoning ?? delta.thinking,
-                                    thinking: delta.thinking
+                                    thinking: delta.thinking,
+                                    toolCalls: delta.tool_calls
                                 )
                                 continuation.yield(chunk)
                             }

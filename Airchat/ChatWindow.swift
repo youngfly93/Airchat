@@ -279,13 +279,26 @@ struct ChatWindow: View {
                 }
                 .buttonStyle(.plain)
                 
-                // 网络图标 (暂时不实现功能)
-                Button(action: {}) {
-                    Image(systemName: "globe")
+                // 网络图标 - 联网搜索开关
+                Button(action: {
+                    if vm.supportsWebSearch {
+                        vm.toggleWebSearch()
+                    }
+                }) {
+                    Image(systemName: vm.isWebSearchEnabled ? "globe.badge.chevron.backward" : "globe")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(
+                            vm.supportsWebSearch 
+                                ? (vm.isWebSearchEnabled ? softBlue : .primary)
+                                : .secondary
+                        )
+                        .opacity(vm.supportsWebSearch ? 1.0 : 0.5)
                 }
                 .buttonStyle(.plain)
+                .disabled(!vm.supportsWebSearch)
+                .help(vm.supportsWebSearch 
+                      ? (vm.isWebSearchEnabled ? "关闭联网搜索" : "开启联网搜索")
+                      : "当前模型不支持联网搜索")
                 
                 // 附件图标 (使用现有功能)
                 Button(action: {

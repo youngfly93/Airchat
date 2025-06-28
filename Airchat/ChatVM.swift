@@ -24,11 +24,13 @@ final class ChatVM: ObservableObject {
     @Published var animatingImageIDs = Set<UUID>()
     @Published var showAPIKeyInput = false
     @Published var showClearConfirmation = false
+    @Published var isWebSearchEnabled = false // 联网搜索开关状态
     
     private let api = ArkChatAPI()
     private var scrollUpdateTimer: Timer?
     private let pasteboardMonitor = PasteboardMonitor()
     let modelConfig = ModelConfig()
+    private let webSearchService = WebSearchService.shared
     
     // 双重滚动机制：流式输出实时滚动 + 普通防抖滚动
     private let streamingScrollSubject = PassthroughSubject<Void, Never>()
@@ -104,7 +106,10 @@ final class ChatVM: ObservableObject {
                 // Update API with selected model
                 api.selectedModel = modelConfig.selectedModel.id
                 
-                for try await chunk in try await api.send(messages: messages, stream: true) {
+                // 检查是否启用联网且当前模型支持
+                let enableWebSearch = isWebSearchEnabled && supportsWebSearch
+                
+                for try await chunk in try await api.send(messages: messages, stream: true, enableWebSearch: enableWebSearch) {
                     appendOrUpdateAssistant(chunk)
                 }
                 
@@ -159,6 +164,13 @@ final class ChatVM: ObservableObject {
             
             // 推理过程更新时也需要滚动跟随
             triggerStreamingScroll()
+        }
+        
+        // 处理工具调用
+        if let toolCalls = chunk.toolCalls {
+            Task {
+                await handleToolCalls(toolCalls)
+            }
         }
     }
     
@@ -267,9 +279,75 @@ final class ChatVM: ObservableObject {
         shouldScrollToBottom = false
     }
     
+    // 切换联网状态
+    func toggleWebSearch() {
+        isWebSearchEnabled.toggle()
+    }
+    
+    // 检查当前模型是否支持联网（工具调用）
+    var supportsWebSearch: Bool {
+        let supportedModels = [
+            "google/gemini-2.5-pro",
+            "anthropic/claude-3.5-sonnet", 
+            "openai/o4-mini-high",
+            "openai/gpt-4o"
+        ]
+        return supportedModels.contains(modelConfig.selectedModel.id)
+    }
+    
     func handlePaste() {
         if let image = pasteboardMonitor.getImageFromPasteboard() {
             processImage(image)
+        }
+    }
+    
+    // 处理工具调用请求
+    @MainActor
+    private func handleToolCalls(_ toolCalls: [ToolCall]) async {
+        for toolCall in toolCalls {
+            if toolCall.function.name == "web_search" {
+                do {
+                    // 解析搜索查询参数
+                    if let queryData = toolCall.function.arguments.data(using: .utf8),
+                       let jsonObject = try JSONSerialization.jsonObject(with: queryData) as? [String: Any],
+                       let query = jsonObject["query"] as? String {
+                        
+                        // 显示搜索状态
+                        appendOrUpdateAssistant(StreamingChunk(
+                            content: "\n\n🔍 正在搜索: \(query)\n\n",
+                            reasoning: nil,
+                            thinking: nil,
+                            toolCalls: nil
+                        ))
+                        
+                        // 执行搜索
+                        let searchResults = try await webSearchService.search(query: query)
+                        
+                        // 格式化搜索结果
+                        var resultText = "**搜索结果:**\n\n"
+                        for (index, result) in searchResults.enumerated() {
+                            resultText += "\(index + 1). **[\(result.title)](\(result.url))**\n"
+                            resultText += "   \(result.snippet)\n\n"
+                        }
+                        
+                        // 将搜索结果添加到对话
+                        appendOrUpdateAssistant(StreamingChunk(
+                            content: resultText,
+                            reasoning: nil,
+                            thinking: nil,
+                            toolCalls: nil
+                        ))
+                    }
+                } catch {
+                    // 搜索失败时显示错误
+                    appendOrUpdateAssistant(StreamingChunk(
+                        content: "\n❌ 搜索失败: \(error.localizedDescription)\n\n",
+                        reasoning: nil,
+                        thinking: nil,
+                        toolCalls: nil
+                    ))
+                }
+            }
         }
     }
     
