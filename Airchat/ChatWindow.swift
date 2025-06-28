@@ -257,19 +257,104 @@ struct ChatWindow: View {
                 imagePreviewSection
             }
             
-            HStack(alignment: .bottom, spacing: 12) {
-                // 改进的添加按钮 - 与发送按钮保持一致的圆形设计
-                enhancedAddButton
-                
-                // 改进的输入框 - 自适应高度 + 毛玻璃背景 + 焦点边框
-                enhancedInputField
-                
-                // 改进的发送按钮 - 添加快捷键提示
-                enhancedSendButton
-            }
+            // 新的输入框设计 - 参考左侧布局
+            newInputBarDesign
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
+    }
+    
+    // 新的输入框设计 - 模仿左侧参考设计
+    private var newInputBarDesign: some View {
+        HStack(spacing: 0) {
+            // 左侧功能图标组
+            HStack(spacing: 12) {
+                // 添加按钮
+                Button(action: {
+                    vm.showFileImporter = true
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                }
+                .buttonStyle(.plain)
+                
+                // 网络图标 (暂时不实现功能)
+                Button(action: {}) {
+                    Image(systemName: "globe")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                
+                // 附件图标 (使用现有功能)
+                Button(action: {
+                    vm.showFileImporter = true
+                }) {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                
+                // 刷新图标 (暂时不实现功能)
+                Button(action: {}) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                
+                // 显示当前模型
+                Text(vm.modelConfig.selectedModel.name)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .onTapGesture {
+                        vm.showModelSelection = true
+                    }
+            }
+            .padding(.leading, 16)
+            
+            Spacer()
+            
+            // 中间输入框
+            enhancedCenterInputField
+            
+            Spacer()
+            
+            // 右侧按钮组
+            HStack(spacing: 12) {
+                // 麦克风按钮 (暂时不实现功能)
+                Button(action: {}) {
+                    Image(systemName: "mic")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                
+                // 发送按钮
+                enhancedCompactSendButton
+            }
+            .padding(.trailing, 16)
+        }
+        .frame(height: 50)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 25, style: .continuous)
+                .strokeBorder(
+                    isInputFocused ? softBlue.opacity(0.6) : Color.clear,
+                    lineWidth: 1
+                )
+                .animation(.easeInOut(duration: 0.2), value: isInputFocused)
+        )
+        .fileImporter(
+            isPresented: $vm.showFileImporter,
+            allowedContentTypes: [.image, .pdf],
+            allowsMultipleSelection: true
+        ) { result in
+            vm.handleFileSelection(result)
+        }
     }
     
     
@@ -482,6 +567,54 @@ struct ChatWindow: View {
         .onTapGesture {
             isInputFocused = true
         }
+    }
+    
+    // 中间输入框 - 用于新设计
+    private var enhancedCenterInputField: some View {
+        ZStack {
+            if vm.composing.isEmpty && !isInputFocused {
+                Text("询问任何问题")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+            
+            TextField("", text: $vm.composing, axis: .vertical)
+                .font(.system(size: 14))
+                .textFieldStyle(.plain)
+                .lineLimit(1...3)
+                .onTapGesture {
+                    isInputFocused = true
+                }
+                .onChange(of: vm.composing) { oldValue, newValue in
+                    if !newValue.isEmpty {
+                        isInputFocused = true
+                    }
+                }
+                .onSubmit {
+                    if !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty {
+                        vm.send()
+                    }
+                }
+        }
+        .frame(minWidth: 120)
+    }
+    
+    // 紧凑发送按钮 - 用于新设计
+    private var enhancedCompactSendButton: some View {
+        let isEmpty = vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && vm.selectedImages.isEmpty
+        let isDisabled = isEmpty || vm.isLoading
+        
+        return Button(action: {
+            vm.send()
+        }) {
+            Image(systemName: isDisabled ? "arrow.up.circle" : "arrow.up.circle.fill")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(isDisabled ? .secondary : softBlue)
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .keyboardShortcut(.return, modifiers: [.command])
+        .help("↩︎ 发送 | ⇧↩︎ 换行")
     }
     
     private var placeholderText: some View {
