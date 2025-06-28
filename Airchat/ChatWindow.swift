@@ -472,7 +472,20 @@ struct ChatWindow: View {
     // 增强的输入框 - 合适高度 + 上下居中 + 毛玻璃背景 + 焦点边框
     private var enhancedInputField: some View {
         ZStack {
-            // 占位符文本 - 只在没有内容且没有焦点时显示
+            placeholderText
+            inputTextEditor
+        }
+        .frame(height: 42)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
+        .overlay(inputBorder)
+        .onTapGesture {
+            isInputFocused = true
+        }
+    }
+    
+    private var placeholderText: some View {
+        Group {
             if vm.composing.isEmpty && !isInputFocused {
                 HStack {
                     Text("输入内容…")
@@ -483,36 +496,39 @@ struct ChatWindow: View {
                 }
                 .allowsHitTesting(false)
             }
-            
-            TextEditor(text: $vm.composing)
-                .font(.system(size: 14))
-                .scrollContentBackground(.hidden) // 隐藏默认背景
-                .padding(.horizontal, 8)
-                .padding(.vertical, 8) // 增加垂直内边距确保居中
-                .onTapGesture {
+        }
+    }
+    
+    private var inputTextEditor: some View {
+        TextField("", text: $vm.composing, axis: .vertical)
+            .font(.system(size: 14))
+            .textFieldStyle(.plain)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .lineLimit(1...4)
+            .onTapGesture {
+                isInputFocused = true
+            }
+            .onChange(of: vm.composing) { oldValue, newValue in
+                if !newValue.isEmpty {
                     isInputFocused = true
                 }
-                .onChange(of: vm.composing) { oldValue, newValue in
-                    // 当开始输入时，确保占位符消失
-                    if !newValue.isEmpty {
-                        isInputFocused = true
-                    }
+            }
+            .onSubmit {
+                // Enter 键提交时发送消息
+                if !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty {
+                    vm.send()
                 }
-        }
-        .frame(height: 42) // 稍微增加高度到42px
-        .background(.regularMaterial) // 毛玻璃背景
-        .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous)) // 调整圆角匹配高度
-        .overlay(
-            RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .strokeBorder(
-                    isInputFocused ? softBlue.opacity(0.6) : Color.clear,
-                    lineWidth: 1
-                )
-                .animation(.easeInOut(duration: 0.2), value: isInputFocused)
-        )
-        .onTapGesture {
-            isInputFocused = true
-        }
+            }
+    }
+    
+    private var inputBorder: some View {
+        RoundedRectangle(cornerRadius: 21, style: .continuous)
+            .strokeBorder(
+                isInputFocused ? softBlue.opacity(0.6) : Color.clear,
+                lineWidth: 1
+            )
+            .animation(.easeInOut(duration: 0.2), value: isInputFocused)
     }
     
     // 增强的发送按钮 - 添加快捷键提示
@@ -533,7 +549,7 @@ struct ChatWindow: View {
         .clipShape(Circle())
         .disabled(isDisabled)
         .keyboardShortcut(.return, modifiers: [.command])
-        .help("⌘↩︎ 发送") // 快捷键提示
+        .help("↩︎ 发送 | ⇧↩︎ 换行") // 快捷键提示
     }
     
     // 增强的添加按钮 - 与发送按钮保持一致的圆形设计
