@@ -8,9 +8,11 @@
 import Foundation
 
 final class GeminiOfficialAPI {
-    // 暂时硬编码 API Key，后续会改为从 Keychain 读取
-    private let apiKey = "AIzaSyBBSv_WSs59s2-RH2rWekFqsYqbWoJMUMw"
-    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro"
+    private var apiKey: String {
+        // TODO: 从 Keychain 或环境变量读取 Google API Key
+        return KeychainHelper.shared.googleApiKey ?? ""
+    }
+    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models"
     
     // Gemini API 请求结构
     struct GeminiRequest: Codable {
@@ -37,6 +39,11 @@ final class GeminiOfficialAPI {
             let topK: Int?
             let topP: Double?
             let maxOutputTokens: Int?
+            let thinkingConfig: ThinkingConfig?
+        }
+        
+        struct ThinkingConfig: Codable {
+            let includeThoughts: Bool
         }
     }
     
@@ -55,6 +62,7 @@ final class GeminiOfficialAPI {
                 
                 struct Part: Codable {
                     let text: String
+                    let thought: Bool?
                 }
             }
         }
@@ -80,15 +88,16 @@ final class GeminiOfficialAPI {
                 
                 struct StreamingPart: Codable {
                     let text: String
+                    let thought: Bool?
                 }
             }
         }
     }
     
-    func send(messages: [ChatMessage], stream: Bool = true) async throws -> AsyncThrowingStream<StreamingChunk, Error> {
+    func send(messages: [ChatMessage], stream: Bool = true, model: String = "gemini-2.5-pro") async throws -> AsyncThrowingStream<StreamingChunk, Error> {
         // 构建请求 URL
         let endpoint = stream ? ":streamGenerateContent" : ":generateContent"
-        let urlString = "\(baseURL)\(endpoint)?alt=sse&key=\(apiKey)"
+        let urlString = "\(baseURL)/\(model)\(endpoint)?alt=sse&key=\(apiKey)"
         guard let url = URL(string: urlString) else {
             throw NSError(domain: "GeminiOfficialAPI", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
         }
@@ -135,13 +144,19 @@ final class GeminiOfficialAPI {
             return GeminiRequest.Content(parts: parts, role: role)
         }
         
+        // 检查模型是否支持思考链
+        let supportsThinking = model.contains("thinking")
+        
+        let thinkingConfig = supportsThinking ? GeminiRequest.ThinkingConfig(includeThoughts: true) : nil
+        
         let geminiRequest = GeminiRequest(
             contents: contents,
             generationConfig: GeminiRequest.GenerationConfig(
                 temperature: 0.7,
                 topK: 40,
                 topP: 0.95,
-                maxOutputTokens: 8192
+                maxOutputTokens: 8192,
+                thinkingConfig: thinkingConfig
             )
         )
         
@@ -192,16 +207,29 @@ final class GeminiOfficialAPI {
                                 }
                                 
                                 if let candidates = response.candidates,
-                                   let firstCandidate = candidates.first,
-                                   let text = firstCandidate.content.parts.first?.text {
+                                   let firstCandidate = candidates.first {
                                     
-                                    let chunk = StreamingChunk(
-                                        content: text,
-                                        reasoning: nil,
-                                        thinking: nil,
-                                        toolCalls: nil
-                                    )
-                                    continuation.yield(chunk)
+                                    for part in firstCandidate.content.parts {
+                                        if part.thought == true {
+                                            // 这是思考过程
+                                            let chunk = StreamingChunk(
+                                                content: nil,
+                                                reasoning: part.text,
+                                                thinking: part.text,
+                                                toolCalls: nil
+                                            )
+                                            continuation.yield(chunk)
+                                        } else {
+                                            // 这是正常回答
+                                            let chunk = StreamingChunk(
+                                                content: part.text,
+                                                reasoning: nil,
+                                                thinking: nil,
+                                                toolCalls: nil
+                                            )
+                                            continuation.yield(chunk)
+                                        }
+                                    }
                                 }
                                 
                                 // 检查是否完成

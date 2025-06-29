@@ -71,6 +71,7 @@ final class KeychainHelper {
 // MARK: - API Key Management
 extension KeychainHelper {
     private static let apiKeyAccount = "ark_api_key"
+    private static let googleApiKeyAccount = "google_api_key"
     
     var apiKey: String? {
         get {
@@ -87,6 +88,25 @@ extension KeychainHelper {
                 _ = saveString(newValue, for: Self.apiKeyAccount)
             } else {
                 _ = delete(for: Self.apiKeyAccount)
+            }
+        }
+    }
+    
+    var googleApiKey: String? {
+        get {
+            // Try to load Google API key from keychain
+            if let storedKey = loadString(for: Self.googleApiKeyAccount) {
+                return storedKey
+            }
+            
+            // No Google API key found - user needs to set one
+            return nil
+        }
+        set {
+            if let newValue = newValue {
+                _ = saveString(newValue, for: Self.googleApiKeyAccount)
+            } else {
+                _ = delete(for: Self.googleApiKeyAccount)
             }
         }
     }

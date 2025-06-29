@@ -108,8 +108,9 @@ final class ChatVM: ObservableObject {
                 
                 // 根据模型提供商选择正确的 API
                 if modelConfig.selectedModel.provider == "Google Official" {
-                    // 使用官方 Gemini API
-                    stream = try await geminiAPI.send(messages: messages, stream: true)
+                    // 使用官方 Gemini API，传递具体的模型名称
+                    let modelName = modelConfig.selectedModel.id.replacingOccurrences(of: "google-official/", with: "")
+                    stream = try await geminiAPI.send(messages: messages, stream: true, model: modelName)
                 } else {
                     // 使用 OpenRouter API
                     api.selectedModel = modelConfig.selectedModel.id
