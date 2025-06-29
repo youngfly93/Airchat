@@ -42,6 +42,15 @@ class ModelConfig: ObservableObject {
                 pricing: AIModel.ModelPricing(input: 3.5, output: 10.5)
             ),
             AIModel(
+                id: "google-official/gemini-2.5-pro",
+                name: "Gemini 2.5 Pro (官方)",
+                provider: "Google Official",
+                description: "Google官方Gemini模型，直接调用Google API",
+                supportsReasoning: false,
+                contextWindow: 2000000,
+                pricing: AIModel.ModelPricing(input: 1.25, output: 5.0)
+            ),
+            AIModel(
                 id: "minimax/minimax-m1",
                 name: "MiniMax M1",
                 provider: "MiniMax",

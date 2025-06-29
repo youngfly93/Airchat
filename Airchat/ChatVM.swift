@@ -27,6 +27,7 @@ final class ChatVM: ObservableObject {
     @Published var isWebSearchEnabled = false // 联网搜索开关状态
     
     private let api = ArkChatAPI()
+    private let geminiAPI = GeminiOfficialAPI()
     private var scrollUpdateTimer: Timer?
     private let pasteboardMonitor = PasteboardMonitor()
     let modelConfig = ModelConfig()
@@ -103,13 +104,23 @@ final class ChatVM: ObservableObject {
         
         Task {
             do {
-                // Update API with selected model
-                api.selectedModel = modelConfig.selectedModel.id
+                let stream: AsyncThrowingStream<StreamingChunk, Error>
                 
-                // 检查是否启用联网且当前模型支持
-                let enableWebSearch = isWebSearchEnabled && supportsWebSearch
+                // 根据模型提供商选择正确的 API
+                if modelConfig.selectedModel.provider == "Google Official" {
+                    // 使用官方 Gemini API
+                    stream = try await geminiAPI.send(messages: messages, stream: true)
+                } else {
+                    // 使用 OpenRouter API
+                    api.selectedModel = modelConfig.selectedModel.id
+                    
+                    // 检查是否启用联网且当前模型支持
+                    let enableWebSearch = isWebSearchEnabled && supportsWebSearch
+                    
+                    stream = try await api.send(messages: messages, stream: true, enableWebSearch: enableWebSearch)
+                }
                 
-                for try await chunk in try await api.send(messages: messages, stream: true, enableWebSearch: enableWebSearch) {
+                for try await chunk in stream {
                     appendOrUpdateAssistant(chunk)
                 }
                 
