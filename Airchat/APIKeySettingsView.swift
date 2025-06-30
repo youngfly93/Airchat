@@ -9,55 +9,114 @@ import SwiftUI
 
 struct APIKeySettingsView: View {
     @State private var apiKey = ""
-    @State private var isEditing = false
+    @State private var googleApiKey = ""
+    @State private var isEditingOpenRouter = false
+    @State private var isEditingGoogle = false
     @State private var showingSuccess = false
     @State private var showingError = false
     @State private var errorMessage = ""
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 25) {
             Text("API Key 设置")
                 .font(.headline)
             
-            HStack {
-                if isEditing {
-                    SecureField("sk-or-v1-...", text: $apiKey)
-                        .textFieldStyle(.roundedBorder)
-                } else {
-                    Text(maskedAPIKey)
-                        .foregroundColor(hasAPIKey ? .primary : .secondary)
-                }
+            // OpenRouter API Key Section
+            VStack(spacing: 10) {
+                Text("OpenRouter API Key")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                 
-                Button(isEditing ? "保存" : (hasAPIKey ? "更改" : "设置")) {
-                    if isEditing {
-                        saveAPIKey()
+                HStack {
+                    if isEditingOpenRouter {
+                        SecureField("sk-or-v1-...", text: $apiKey)
+                            .textFieldStyle(.roundedBorder)
                     } else {
-                        startEditing()
+                        Text(maskedAPIKey)
+                            .foregroundColor(hasAPIKey ? .primary : .secondary)
+                    }
+                    
+                    Button(isEditingOpenRouter ? "保存" : (hasAPIKey ? "更改" : "设置")) {
+                        if isEditingOpenRouter {
+                            saveOpenRouterAPIKey()
+                        } else {
+                            startEditingOpenRouter()
+                        }
+                    }
+                    
+                    if isEditingOpenRouter {
+                        Button("取消") {
+                            cancelEditingOpenRouter()
+                        }
                     }
                 }
                 
-                if isEditing {
-                    Button("取消") {
-                        cancelEditing()
-                    }
-                }
+                Text("您可以在 [OpenRouter](https://openrouter.ai/keys) 获取 API Key")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             
-            Text("您可以在 [OpenRouter](https://openrouter.ai/keys) 获取 API Key")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Divider()
             
-            if hasAPIKey && !isEditing {
-                Button("删除 API Key") {
-                    deleteAPIKey()
+            // Google API Key Section
+            VStack(spacing: 10) {
+                Text("Google API Key (Gemini官方)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                HStack {
+                    if isEditingGoogle {
+                        SecureField("AIza...", text: $googleApiKey)
+                            .textFieldStyle(.roundedBorder)
+                    } else {
+                        Text(maskedGoogleAPIKey)
+                            .foregroundColor(hasGoogleAPIKey ? .primary : .secondary)
+                    }
+                    
+                    Button(isEditingGoogle ? "保存" : (hasGoogleAPIKey ? "更改" : "设置")) {
+                        if isEditingGoogle {
+                            saveGoogleAPIKey()
+                        } else {
+                            startEditingGoogle()
+                        }
+                    }
+                    
+                    if isEditingGoogle {
+                        Button("取消") {
+                            cancelEditingGoogle()
+                        }
+                    }
                 }
-                .foregroundColor(.red)
+                
+                Text("您可以在 [Google AI Studio](https://aistudio.google.com/app/apikey) 获取 API Key")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer().frame(height: 10)
+            
+            HStack {
+                if hasAPIKey && !isEditingOpenRouter {
+                    Button("删除 OpenRouter Key") {
+                        deleteOpenRouterAPIKey()
+                    }
+                    .foregroundColor(.red)
+                    .font(.caption)
+                }
+                
+                if hasGoogleAPIKey && !isEditingGoogle {
+                    Button("删除 Google Key") {
+                        deleteGoogleAPIKey()
+                    }
+                    .foregroundColor(.red)
+                    .font(.caption)
+                }
             }
         }
         .padding(30)
-        .frame(width: 350)
+        .frame(width: 450)
         .onAppear {
-            loadCurrentAPIKey()
+            loadCurrentAPIKeys()
         }
         .alert("成功", isPresented: $showingSuccess) {
             Button("确定", role: .cancel) { }
@@ -75,6 +134,10 @@ struct APIKeySettingsView: View {
         KeychainHelper.shared.apiKey != nil && !KeychainHelper.shared.apiKey!.isEmpty
     }
     
+    private var hasGoogleAPIKey: Bool {
+        KeychainHelper.shared.googleApiKey != nil && !KeychainHelper.shared.googleApiKey!.isEmpty
+    }
+    
     private var maskedAPIKey: String {
         guard let key = KeychainHelper.shared.apiKey, !key.isEmpty else {
             return "未设置 API Key"
@@ -90,43 +153,136 @@ struct APIKeySettingsView: View {
         }
     }
     
-    private func loadCurrentAPIKey() {
-        if let key = KeychainHelper.shared.apiKey {
-            apiKey = key
+    private var maskedGoogleAPIKey: String {
+        guard let key = KeychainHelper.shared.googleApiKey, !key.isEmpty else {
+            return "未设置 API Key"
+        }
+        
+        // Show first 6 and last 4 characters
+        if key.count > 10 {
+            let prefix = key.prefix(6)
+            let suffix = key.suffix(4)
+            return "\(prefix)...\(suffix)"
+        } else {
+            return "AIza..."
         }
     }
     
-    private func startEditing() {
-        isEditing = true
+    private func loadCurrentAPIKeys() {
+        Task {
+            let (openRouterKey, googleKey) = await Task.detached {
+                let openRouter = KeychainHelper.shared.apiKey
+                let google = KeychainHelper.shared.googleApiKey
+                return (openRouter, google)
+            }.value
+            
+            await MainActor.run {
+                if let key = openRouterKey {
+                    apiKey = key
+                }
+                if let key = googleKey {
+                    googleApiKey = key
+                }
+            }
+        }
+    }
+    
+    // OpenRouter API Key methods
+    private func startEditingOpenRouter() {
+        isEditingOpenRouter = true
         if hasAPIKey {
             apiKey = KeychainHelper.shared.apiKey ?? ""
         }
     }
     
-    private func cancelEditing() {
-        isEditing = false
+    private func cancelEditingOpenRouter() {
+        isEditingOpenRouter = false
         apiKey = ""
     }
     
-    private func saveAPIKey() {
+    private func saveOpenRouterAPIKey() {
         guard !apiKey.isEmpty else {
             errorMessage = "API Key 不能为空"
             showingError = true
             return
         }
         
-        if KeychainHelper.shared.saveString(apiKey, for: "ark_api_key") {
-            isEditing = false
-            showingSuccess = true
-            apiKey = ""
-        } else {
-            errorMessage = "保存 API Key 失败，请重试"
-            showingError = true
+        let keyToSave = apiKey
+        
+        Task {
+            let success = await Task.detached {
+                KeychainHelper.shared.saveString(keyToSave, for: "ark_api_key")
+            }.value
+            
+            await MainActor.run {
+                if success {
+                    isEditingOpenRouter = false
+                    showingSuccess = true
+                    apiKey = ""
+                } else {
+                    errorMessage = "保存 API Key 失败，请重试"
+                    showingError = true
+                }
+            }
         }
     }
     
-    private func deleteAPIKey() {
-        _ = KeychainHelper.shared.delete(for: "ark_api_key")
-        apiKey = ""
+    private func deleteOpenRouterAPIKey() {
+        Task {
+            await Task.detached {
+                _ = KeychainHelper.shared.delete(for: "ark_api_key")
+            }.value
+            
+            await MainActor.run {
+                apiKey = ""
+            }
+        }
+    }
+    
+    // Google API Key methods
+    private func startEditingGoogle() {
+        isEditingGoogle = true
+        if hasGoogleAPIKey {
+            googleApiKey = KeychainHelper.shared.googleApiKey ?? ""
+        }
+    }
+    
+    private func cancelEditingGoogle() {
+        isEditingGoogle = false
+        googleApiKey = ""
+    }
+    
+    private func saveGoogleAPIKey() {
+        guard !googleApiKey.isEmpty else {
+            errorMessage = "Google API Key 不能为空"
+            showingError = true
+            return
+        }
+        
+        let keyToSave = googleApiKey
+        
+        Task {
+            await Task.detached {
+                KeychainHelper.shared.googleApiKey = keyToSave
+            }.value
+            
+            await MainActor.run {
+                isEditingGoogle = false
+                showingSuccess = true
+                googleApiKey = ""
+            }
+        }
+    }
+    
+    private func deleteGoogleAPIKey() {
+        Task {
+            await Task.detached {
+                KeychainHelper.shared.googleApiKey = nil
+            }.value
+            
+            await MainActor.run {
+                googleApiKey = ""
+            }
+        }
     }
 }

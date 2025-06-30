@@ -9,7 +9,6 @@ import Foundation
 
 final class GeminiOfficialAPI {
     private var apiKey: String {
-        // TODO: 从 Keychain 或环境变量读取 Google API Key
         return KeychainHelper.shared.googleApiKey ?? ""
     }
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -95,6 +94,11 @@ final class GeminiOfficialAPI {
     }
     
     func send(messages: [ChatMessage], stream: Bool = true, model: String = "gemini-2.5-pro") async throws -> AsyncThrowingStream<StreamingChunk, Error> {
+        // 检查 API Key 是否存在
+        guard !apiKey.isEmpty else {
+            throw NSError(domain: "GeminiOfficialAPI", code: -2, userInfo: [NSLocalizedDescriptionKey: "Google API Key 未设置。请在设置中配置您的 Google API Key。"])
+        }
+        
         // 构建请求 URL
         let endpoint = stream ? ":streamGenerateContent" : ":generateContent"
         let urlString = "\(baseURL)/\(model)\(endpoint)?alt=sse&key=\(apiKey)"
@@ -187,8 +191,6 @@ final class GeminiOfficialAPI {
         return AsyncThrowingStream<StreamingChunk, Error> { continuation in
             Task {
                 do {
-                    var buffer = ""
-                    
                     for try await line in bytes.lines {
                         // Gemini 流式响应格式：data: {json}
                         if line.hasPrefix("data: ") {

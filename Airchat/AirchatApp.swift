@@ -297,19 +297,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc private func openSettings() {
-        // Open Settings window
-        if let settingsWindow = NSApp.windows.first(where: { $0.title == "Settings" || $0.title == "设置" }) {
-            settingsWindow.makeKeyAndOrderFront(nil)
-        } else {
-            // Try to open settings using the Settings scene
+        // 简单的方法：直接使用 SwiftUI 的 Settings 场景
+        DispatchQueue.main.async {
+            // 查找是否已有设置窗口
             for window in NSApp.windows {
-                if window.identifier?.rawValue == "com.apple.SwiftUI.Settings" {
+                if window.title.contains("设置") || window.title.contains("Settings") || window.identifier?.rawValue.contains("Settings") == true {
                     window.makeKeyAndOrderFront(nil)
+                    NSApp.activate(ignoringOtherApps: true)
                     return
                 }
             }
-            // If Settings window doesn't exist, use the menu command
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+            
+            // 如果没有找到，尝试通过键盘快捷键打开
+            let event = NSEvent.keyEvent(with: .keyDown, location: NSPoint.zero, modifierFlags: [.command], timestamp: 0, windowNumber: 0, context: nil, characters: ",", charactersIgnoringModifiers: ",", isARepeat: false, keyCode: 43)
+            if let event = event {
+                NSApp.postEvent(event, atStart: false)
+            }
         }
     }
     
