@@ -131,10 +131,16 @@ final class ChatVM: ObservableObject {
                     // 使用 OpenRouter API
                     api.selectedModel = modelConfig.selectedModel.id
                     
-                    // 检查是否启用联网且当前模型支持
-                    let enableWebSearch = isWebSearchEnabled && supportsWebSearch
-                    
-                    stream = try await api.send(messages: messages, stream: true, enableWebSearch: enableWebSearch)
+                    // 检查模型类型决定搜索策略
+                    let modelId = modelConfig.selectedModel.id
+                    if modelId.contains(":online") || modelId.contains("search-preview") {
+                        // 联网模型：直接发送，无需工具调用
+                        stream = try await api.send(messages: messages, stream: true, enableWebSearch: false)
+                    } else {
+                        // 传统模型：使用工具调用（如果启用联网）
+                        let enableWebSearch = isWebSearchEnabled && supportsWebSearch
+                        stream = try await api.send(messages: messages, stream: true, enableWebSearch: enableWebSearch)
+                    }
                 }
                 
                 for try await chunk in stream {
@@ -332,15 +338,24 @@ final class ChatVM: ObservableObject {
         isWebSearchEnabled.toggle()
     }
     
-    // 检查当前模型是否支持联网（工具调用）
+    // 检查当前模型是否支持联网搜索
     var supportsWebSearch: Bool {
-        let supportedModels = [
+        let modelId = modelConfig.selectedModel.id
+        
+        // OpenRouter联网模型 - 自动联网，无需手动工具调用
+        if modelId.contains(":online") || 
+           modelId.contains("search-preview") {
+            return true
+        }
+        
+        // 传统工具调用模型
+        let toolCallModels = [
             "google/gemini-2.5-pro",
             "anthropic/claude-3.5-sonnet", 
             "openai/o4-mini-high",
             "openai/gpt-4o"
         ]
-        return supportedModels.contains(modelConfig.selectedModel.id)
+        return toolCallModels.contains(modelId)
     }
     
     func handlePaste() {

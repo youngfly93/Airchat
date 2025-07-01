@@ -68,6 +68,17 @@ final class ArkChatAPI {
         let reasoning: ReasoningConfig?
         let tools: [Tool]?
         let tool_choice: String?
+        let web_search_options: WebSearchOptions?
+        let plugins: [Plugin]?
+    }
+    
+    struct WebSearchOptions: Codable {
+        let search_context_size: String
+    }
+    
+    struct Plugin: Codable {
+        let id: String
+        let max_results: Int?
     }
     
     struct ReasoningConfig: Codable {
@@ -207,11 +218,23 @@ final class ArkChatAPI {
             reasoningConfig = ReasoningConfig(effort: "high")
         }
         
-        // 构建工具定义
+        // 根据模型类型配置联网方式
         var tools: [Tool]? = nil
         var toolChoice: String? = nil
+        var webSearchOptions: WebSearchOptions? = nil
+        var plugins: [Plugin]? = nil
         
-        if enableWebSearch {
+        // 检查是否为联网模型
+        if modelToUse.contains("search-preview") {
+            // Search Preview 模型：使用 web_search_options
+            webSearchOptions = WebSearchOptions(search_context_size: "high")
+            print("🌐 [API] Using search-preview model with web_search_options")
+        } else if modelToUse.contains(":online") {
+            // :online 模型：使用 plugins
+            plugins = [Plugin(id: "web", max_results: 5)]
+            print("🌐 [API] Using :online model with web plugin")
+        } else if enableWebSearch {
+            // 传统模型：使用工具调用
             tools = [
                 Tool(
                     type: "function",
@@ -232,6 +255,7 @@ final class ArkChatAPI {
                 )
             ]
             toolChoice = "auto"
+            print("🌐 [API] Using traditional model with tool calls")
         }
         
         let payload = Payload(
@@ -241,7 +265,9 @@ final class ArkChatAPI {
             include_reasoning: supportsReasoning,
             reasoning: reasoningConfig,
             tools: tools,
-            tool_choice: toolChoice
+            tool_choice: toolChoice,
+            web_search_options: webSearchOptions,
+            plugins: plugins
         )
         
         // Debug: Print request payload

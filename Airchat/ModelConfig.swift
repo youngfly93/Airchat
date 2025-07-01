@@ -96,6 +96,33 @@ class ModelConfig: ObservableObject {
                 pricing: AIModel.ModelPricing(input: 2.5, output: 10.0)
             ),
             AIModel(
+                id: "openai/gpt-4o:online",
+                name: "GPT-4o Online",
+                provider: "OpenAI",
+                description: "GPT-4o联网版本，支持实时网页搜索和最新信息查询",
+                supportsReasoning: false,
+                contextWindow: 128000,
+                pricing: AIModel.ModelPricing(input: 2.5, output: 10.0)
+            ),
+            AIModel(
+                id: "openai/gpt-4o-search-preview-2025-03-11",
+                name: "GPT-4o Search Preview",
+                provider: "OpenAI",
+                description: "内置搜索功能的GPT-4o预览版，响应更快",
+                supportsReasoning: false,
+                contextWindow: 128000,
+                pricing: AIModel.ModelPricing(input: 30.0, output: 30.0)
+            ),
+            AIModel(
+                id: "openai/gpt-4o-mini-search-preview",
+                name: "GPT-4o Mini Search Preview",
+                provider: "OpenAI",
+                description: "轻量版GPT-4o搜索模型，成本更低",
+                supportsReasoning: false,
+                contextWindow: 128000,
+                pricing: AIModel.ModelPricing(input: 15.0, output: 15.0)
+            ),
+            AIModel(
                 id: "meta-llama/llama-3.3-70b-instruct",
                 name: "Llama 3.3 70B",
                 provider: "Meta",
