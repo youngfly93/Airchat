@@ -11,9 +11,7 @@ import Combine
 
 @MainActor
 final class ChatVM: ObservableObject {
-    @Published var messages: [ChatMessage] = [
-        ChatMessage(role: .system, content: "你是人工智能助手.")
-    ]
+    @Published var messages: [ChatMessage] = []
     @Published var composing = ""
     @Published var selectedImages: [AttachedImage] = []
     @Published var isLoading = false
@@ -64,6 +62,24 @@ final class ChatVM: ObservableObject {
     private var isTypewriting = false
     
     // 移除了滚动节流，打字机模式需要实时跟随
+    
+    init() {
+        // 初始化系统消息，包含当前日期
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "zh_CN")
+        dateFormatter.dateFormat = "yyyy年MM月dd日"
+        let currentDate = dateFormatter.string(from: Date())
+        
+        let systemMessage = """
+        你是人工智能助手。当前日期是\(currentDate)。
+        
+        重要提示：
+        - 当用户询问天气或其他时效性信息时，如果用户没有指定日期，请使用今天的日期（\(currentDate)）。
+        - 不要使用历史日期，除非用户明确要求。
+        """
+        
+        messages = [ChatMessage(role: .system, content: systemMessage)]
+    }
     
     func send() {
         guard !composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedImages.isEmpty else { return }
@@ -281,7 +297,21 @@ final class ChatVM: ObservableObject {
     }
     
     func clearChat() {
-        messages = [ChatMessage(role: .system, content: "你是人工智能助手.")]
+        // 重新创建带有当前日期的系统消息
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "zh_CN")
+        dateFormatter.dateFormat = "yyyy年MM月dd日"
+        let currentDate = dateFormatter.string(from: Date())
+        
+        let systemMessage = """
+        你是人工智能助手。当前日期是\(currentDate)。
+        
+        重要提示：
+        - 当用户询问天气或其他时效性信息时，如果用户没有指定日期，请使用今天的日期（\(currentDate)）。
+        - 不要使用历史日期，除非用户明确要求。
+        """
+        
+        messages = [ChatMessage(role: .system, content: systemMessage)]
         
         // 清理所有定时器和缓冲区
         scrollUpdateTimer?.invalidate()
@@ -365,13 +395,16 @@ final class ChatVM: ObservableObject {
                             resultText += "   \(result.snippet)\n\n"
                         }
                         
-                        // 将搜索结果添加到对话
-                        appendOrUpdateAssistant(StreamingChunk(
+                        // 将搜索结果添加为工具消息到对话历史
+                        let toolMessage = ChatMessage(
+                            role: .tool, 
                             content: resultText,
-                            reasoning: nil,
-                            thinking: nil,
-                            toolCalls: nil
-                        ))
+                            toolCallId: toolCall.id
+                        )
+                        messages.append(toolMessage)
+                        
+                        // 继续调用 API 让 GPT-4o 分析搜索结果
+                        await continueConversationAfterToolCall()
                     } else {
                         throw NSError(domain: "ChatVM", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法解析搜索查询参数"])
                     }
@@ -385,6 +418,57 @@ final class ChatVM: ObservableObject {
                         toolCalls: nil
                     ))
                 }
+            }
+        }
+    }
+    
+    // 工具调用后继续对话
+    @MainActor
+    private func continueConversationAfterToolCall() async {
+        do {
+            let stream: AsyncThrowingStream<StreamingChunk, Error>
+            
+            // 根据模型提供商选择正确的 API
+            if modelConfig.selectedModel.provider == "Google Official" {
+                // 使用官方 Gemini API
+                let modelName = modelConfig.selectedModel.id.replacingOccurrences(of: "google-official/", with: "")
+                stream = try await geminiAPI.send(messages: messages, stream: true, model: modelName)
+            } else {
+                // 使用 OpenRouter API
+                api.selectedModel = modelConfig.selectedModel.id
+                
+                // 工具调用后继续对话，不需要再次启用工具
+                stream = try await api.send(messages: messages, stream: true, enableWebSearch: false)
+            }
+            
+            for try await chunk in stream {
+                appendOrUpdateAssistant(chunk)
+            }
+            
+            // 确保最后的字符都被显示
+            flushRemainingCharacters()
+            stopTypewriterEffect()
+            
+            // 最终滚动到底部
+            Task { @MainActor in
+                triggerNormalScroll()
+            }
+        } catch {
+            // 确保错误情况下也显示所有字符
+            flushRemainingCharacters()
+            stopTypewriterEffect()
+            
+            // Add error message to chat
+            appendOrUpdateAssistant(StreamingChunk(
+                content: "抱歉，分析搜索结果时发生了错误：\(error.localizedDescription)",
+                reasoning: nil,
+                thinking: nil,
+                toolCalls: nil
+            ))
+            
+            // 滚动到底部显示错误消息
+            Task { @MainActor in
+                triggerNormalScroll()
             }
         }
     }

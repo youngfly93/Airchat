@@ -99,6 +99,13 @@ final class ArkChatAPI {
     struct APIMessage: Codable {
         let role: String
         let content: APIContent
+        let tool_call_id: String?
+        
+        init(role: String, content: APIContent, tool_call_id: String? = nil) {
+            self.role = role
+            self.content = content
+            self.tool_call_id = tool_call_id
+        }
     }
     
     enum APIContent: Codable {
@@ -144,7 +151,11 @@ final class ArkChatAPI {
             case .multimodal(let parts):
                 apiContent = .multimodal(parts)
             }
-            return APIMessage(role: message.role.rawValue, content: apiContent)
+            return APIMessage(
+                role: message.role.rawValue, 
+                content: apiContent,
+                tool_call_id: message.toolCallId
+            )
         }
         
         // Use provided model or default to selected model
@@ -169,13 +180,13 @@ final class ArkChatAPI {
                     type: "function",
                     function: ToolFunction(
                         name: "web_search",
-                        description: "Search the web for current information",
+                        description: "Search the web for current, real-time information. Use this for weather, news, or any time-sensitive queries.",
                         parameters: ToolParameters(
                             type: "object",
                             properties: [
                                 "query": ParameterProperty(
                                     type: "string", 
-                                    description: "The search query"
+                                    description: "The search query. For weather queries without a specified date, search for 'current weather' or 'today's weather'. Example: '北京今天天气' or '郑州当前天气'"
                                 )
                             ],
                             required: ["query"]
@@ -318,15 +329,9 @@ final class ArkChatAPI {
                                         }
                                     }
                                     
-                                    // Check if we have complete tool calls to send
-                                    processedToolCalls = accumulatedToolCalls.values.compactMap { toolCall -> ToolCall? in
-                                        // Only include tool calls that have complete data
-                                        guard let function = toolCall.function,
-                                              let name = function.name,
-                                              let arguments = function.arguments,
-                                              !arguments.isEmpty else { return nil }
-                                        return toolCall
-                                    }
+                                    // Don't send tool calls during streaming - wait for completion
+                                    // Tool calls will be sent when we receive [DONE]
+                                    processedToolCalls = nil
                                 }
                                 
                                 // Only yield chunk if we have content or complete tool calls

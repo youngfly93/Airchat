@@ -204,7 +204,7 @@ struct ChatWindow: View {
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 8) {
                     // 确保至少有一个元素，避免完全空白
-                    if vm.messages.filter({ $0.role != .system }).isEmpty && !vm.isLoading {
+                    if vm.messages.filter({ $0.role != .system && $0.role != .tool }).isEmpty && !vm.isLoading {
                         Text("开始对话吧...")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -212,7 +212,7 @@ struct ChatWindow: View {
                             .padding(.vertical, 20)
                     }
                     
-                    ForEach(vm.messages.filter { $0.role != .system }) { message in
+                    ForEach(vm.messages.filter { $0.role != .system && $0.role != .tool }) { message in
                         bubble(for: message)
                             .id(message.id)
                     }

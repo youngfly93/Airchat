@@ -9,26 +9,29 @@ import Foundation
 
 struct ChatMessage: Identifiable, Codable {
     enum Role: String, Codable { 
-        case system, user, assistant 
+        case system, user, assistant, tool
     }
     
     let id: UUID
     let role: Role
     var content: MessageContent
     var reasoning: String?
+    var toolCallId: String? // For tool messages
     
-    init(role: Role, content: String, reasoning: String? = nil) {
+    init(role: Role, content: String, reasoning: String? = nil, toolCallId: String? = nil) {
         self.id = UUID()
         self.role = role
         self.content = .text(content)
         self.reasoning = reasoning
+        self.toolCallId = toolCallId
     }
     
-    init(role: Role, content: MessageContent, reasoning: String? = nil) {
+    init(role: Role, content: MessageContent, reasoning: String? = nil, toolCallId: String? = nil) {
         self.id = UUID()
         self.role = role
         self.content = content
         self.reasoning = reasoning
+        self.toolCallId = toolCallId
     }
 }
 
