@@ -129,12 +129,20 @@ final class ChatVM: ObservableObject {
                     stream = try await geminiAPI.send(messages: messages, stream: true, model: modelName)
                 } else {
                     // 使用 OpenRouter API
-                    api.selectedModel = modelConfig.selectedModel.id
+                    let baseModelId = modelConfig.selectedModel.id
+                    var actualModelId = baseModelId
+                    
+                    // 如果是GPT-4o且开启了联网，自动切换到联网版本
+                    if baseModelId == "openai/gpt-4o" && isWebSearchEnabled {
+                        actualModelId = "openai/gpt-4o:online"
+                        print("🔧 [AUTO-SWITCH] GPT-4o → GPT-4o:online (联网模式)")
+                    }
+                    
+                    api.selectedModel = actualModelId
                     
                     // 检查模型类型决定搜索策略
-                    let modelId = modelConfig.selectedModel.id
-                    if modelId.contains(":online") || modelId.contains("search-preview") {
-                        // 联网模型：直接发送，无需工具调用
+                    if actualModelId.contains(":online") || actualModelId.contains("search-preview") {
+                        // 联网模型：直接发送，自动联网
                         stream = try await api.send(messages: messages, stream: true, enableWebSearch: false)
                     } else {
                         // 传统模型：使用工具调用（如果启用联网）
@@ -342,20 +350,20 @@ final class ChatVM: ObservableObject {
     var supportsWebSearch: Bool {
         let modelId = modelConfig.selectedModel.id
         
-        // OpenRouter联网模型 - 自动联网，无需手动工具调用
+        // OpenRouter内置联网模型
         if modelId.contains(":online") || 
            modelId.contains("search-preview") {
             return true
         }
         
-        // 传统工具调用模型
-        let toolCallModels = [
+        // 支持联网功能的模型（包括GPT-4o自动切换到:online版本）
+        let webSearchModels = [
             "google/gemini-2.5-pro",
             "anthropic/claude-3.5-sonnet", 
             "openai/o4-mini-high",
-            "openai/gpt-4o"
+            "openai/gpt-4o"  // 支持通过联网开关自动切换到:online版本
         ]
-        return toolCallModels.contains(modelId)
+        return webSearchModels.contains(modelId)
     }
     
     func handlePaste() {
@@ -508,7 +516,16 @@ final class ChatVM: ObservableObject {
             } else {
                 print("🔧 [CONTINUE Step 2b] Using OpenRouter API")
                 // 使用 OpenRouter API
-                api.selectedModel = modelConfig.selectedModel.id
+                let baseModelId = modelConfig.selectedModel.id
+                var actualModelId = baseModelId
+                
+                // 如果是GPT-4o且开启了联网，继续使用联网版本
+                if baseModelId == "openai/gpt-4o" && isWebSearchEnabled {
+                    actualModelId = "openai/gpt-4o:online"
+                    print("🔧 [CONTINUE] Using GPT-4o:online for continuation")
+                }
+                
+                api.selectedModel = actualModelId
                 print("🔧 API model set to: \(api.selectedModel)")
                 
                 // 工具调用后继续对话，不需要再次启用工具

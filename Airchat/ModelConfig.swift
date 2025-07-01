@@ -90,16 +90,7 @@ class ModelConfig: ObservableObject {
                 id: "openai/gpt-4o",
                 name: "GPT-4o",
                 provider: "OpenAI",
-                description: "OpenAI最新多模态模型",
-                supportsReasoning: false,
-                contextWindow: 128000,
-                pricing: AIModel.ModelPricing(input: 2.5, output: 10.0)
-            ),
-            AIModel(
-                id: "openai/gpt-4o:online",
-                name: "GPT-4o Online",
-                provider: "OpenAI",
-                description: "GPT-4o联网版本，支持实时网页搜索和最新信息查询",
+                description: "OpenAI最新多模态模型，支持联网搜索（点击联网开关启用）",
                 supportsReasoning: false,
                 contextWindow: 128000,
                 pricing: AIModel.ModelPricing(input: 2.5, output: 10.0)
