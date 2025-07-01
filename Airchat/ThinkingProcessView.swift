@@ -46,19 +46,19 @@ struct ThinkingProcessView: View {
     ]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             // 标题和计时器
             headerView
             
             // 思考过程滚动区域
             thinkingScrollView
         }
-        .padding(16)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(softBlue.opacity(0.08))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .stroke(softBlue.opacity(0.2), lineWidth: 1)
                 )
         )
@@ -119,7 +119,7 @@ struct ThinkingProcessView: View {
     private var thinkingScrollView: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: 8) {
+                LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(displayedThoughts) { thought in
                         thoughtBubble(thought.text)
                             .id(thought.id)
@@ -136,10 +136,10 @@ struct ThinkingProcessView: View {
                 }
                 .padding(.vertical, 8)
             }
-            .frame(maxHeight: 200) // 限制最大高度
+            .frame(maxHeight: 120) // 限制最大高度，更矮以增强滚动感
             .onChange(of: displayedThoughts.count) { _, _ in
                 // 每当有新的思考内容添加时，自动滚动到底部
-                withAnimation(.easeOut(duration: 0.3)) {
+                withAnimation(.easeOut(duration: 0.25)) {
                     if let lastThought = displayedThoughts.last {
                         proxy.scrollTo(lastThought.id, anchor: .bottom)
                     }
@@ -159,9 +159,10 @@ struct ThinkingProcessView: View {
             
             // 思考文本
             Text(text)
-                .font(.system(size: 12, weight: .regular))
+                .font(.system(size: 11, weight: .regular))
                 .foregroundColor(.primary)
                 .multilineTextAlignment(.leading)
+                .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
             
             Spacer()
@@ -229,7 +230,7 @@ struct ThinkingProcessView: View {
         
         // 继续处理下一个句子
         if index + 1 < sentences.count {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 addSentencesWithDelay(sentences, index: index + 1)
             }
         }
