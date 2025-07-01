@@ -201,8 +201,17 @@ struct ChatWindow: View {
     
     private var messagesView: some View {
         ScrollViewReader { proxy in
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 8) {
+                    // 确保至少有一个元素，避免完全空白
+                    if vm.messages.filter({ $0.role != .system }).isEmpty && !vm.isLoading {
+                        Text("开始对话吧...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 20)
+                    }
+                    
                     ForEach(vm.messages.filter { $0.role != .system }) { message in
                         bubble(for: message)
                             .id(message.id)
@@ -228,9 +237,12 @@ struct ChatWindow: View {
                 .padding(.horizontal)
                 .padding(.top)
                 .padding(.bottom, 5) // 确保内容贴近输入框但不被遮挡
+                .frame(minHeight: 100) // 设置最小高度，防止内容过少时的布局问题
             }
             .scrollBounceBehavior(.basedOnSize)
-            .scrollIndicators(.never)
+            .clipped() // 防止内容溢出滚动视图边界
+            .background(Color.clear) // 确保背景透明
+            .scrollDismissesKeyboard(.interactively)
             .onChange(of: vm.messages.count) {
                 // 新增消息时滚动到底部，使用动画
                 withAnimation(.easeOut(duration: 0.3)) {
