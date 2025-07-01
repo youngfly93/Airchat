@@ -16,6 +16,7 @@ struct ThinkingProcessView: View {
     @State private var timer: Timer?
     @State private var thoughtTimer: Timer?
     @State private var lastProcessedLength = 0 // 用于跟踪已处理的文本长度
+    @State private var activeThoughtId: UUID? = nil // 当前活跃段落的ID
     
     // External data
     let reasoning: String
@@ -23,9 +24,9 @@ struct ThinkingProcessView: View {
     var isDemo: Bool = false // 是否为演示模式
     var isStreaming: Bool = false // 是否为流式模式
     
-    // 定义深色蓝色主题
-    private let darkBlue = Color(red: 0.1, green: 0.15, blue: 0.25)
-    private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
+    // 定义深色主题 - 针对毛玻璃背景优化对比度
+    private let darkBlue = Color(red: 0.05, green: 0.1, blue: 0.15)
+    private let contrastBlue = Color(red: 0.2, green: 0.3, blue: 0.5)
     
     // MARK: - Data Models
     struct ThoughtSegment: Identifiable {
@@ -56,50 +57,22 @@ struct ThinkingProcessView: View {
         }
         .padding(12)
         .background(
-            // 多层毛玻璃效果
-            ZStack {
-                // 底层毛玻璃
-                VisualEffectView(
-                    material: .underWindowBackground,
-                    blendingMode: .behindWindow
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                
-                // 中层深色渐变
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        darkBlue.opacity(0.8),
-                        darkBlue.opacity(0.6),
-                        darkBlue.opacity(0.7)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                
-                // 顶层毛玻璃
-                VisualEffectView(
-                    material: .hudWindow,
-                    blendingMode: .withinWindow
-                )
-                .opacity(0.6)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                
-                // 边框
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                darkBlue.opacity(0.5),
-                                darkBlue.opacity(0.3),
-                                darkBlue.opacity(0.4)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
+            // 深色背景以提高对比度
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            darkBlue.opacity(0.95),
+                            contrastBlue.opacity(0.9)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-            }
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(contrastBlue.opacity(0.4), lineWidth: 1)
+                )
         )
         .onAppear {
             startThinking()
@@ -127,7 +100,7 @@ struct ThinkingProcessView: View {
             // 思考图标（带动画）
             Image(systemName: "brain.head.profile")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundColor(.white)
                 .scaleEffect(isCompleted ? 1.0 : 1.2)
                 .animation(
                     isCompleted ? .none : .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
@@ -137,7 +110,7 @@ struct ThinkingProcessView: View {
             // 计时器文本
             Text(isCompleted ? "思考完成" : "思考中 \(elapsedTime)s")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(isCompleted ? .white.opacity(0.7) : .white.opacity(0.9))
+                .foregroundColor(isCompleted ? .white.opacity(0.8) : .white)
             
             Spacer()
             
@@ -160,7 +133,7 @@ struct ThinkingProcessView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(displayedThoughts) { thought in
-                        thoughtBubble(thought.text)
+                        thoughtBubble(thought)
                             .id(thought.id)
                             .transition(.asymmetric(
                                 insertion: .move(edge: .bottom).combined(with: .opacity),
@@ -201,21 +174,27 @@ struct ThinkingProcessView: View {
     }
     
     // MARK: - Thought Bubble
-    private func thoughtBubble(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
+    private func thoughtBubble(_ thought: ThoughtSegment) -> some View {
+        let isActive = activeThoughtId == thought.id
+        
+        return HStack(alignment: .top, spacing: 8) {
             // 思考点图标
             Circle()
-                .fill(.white.opacity(0.7))
-                .frame(width: 6, height: 6)
+                .fill(isActive ? .white : .white.opacity(0.7))
+                .frame(width: isActive ? 8 : 6, height: isActive ? 8 : 6)
                 .padding(.top, 6)
+                .scaleEffect(isActive ? 1.2 : 1.0)
+                .animation(.easeInOut(duration: 0.3), value: isActive)
             
             // 思考文本
-            Text(text)
-                .font(.system(size: 11, weight: .regular))
-                .foregroundColor(.white.opacity(0.9)) // 白色文字，更好的对比度
+            Text(thought.text)
+                .font(.system(size: 11, weight: isActive ? .medium : .regular))
+                .foregroundColor(isActive ? .white : .white.opacity(0.9))
                 .multilineTextAlignment(.leading)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
+                .scaleEffect(isActive ? 1.05 : 1.0)
+                .animation(.easeInOut(duration: 0.3), value: isActive)
             
             Spacer()
         }
@@ -278,6 +257,17 @@ struct ThinkingProcessView: View {
         
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             displayedThoughts.append(segment)
+            // 设置新段落为活跃状态
+            activeThoughtId = segment.id
+        }
+        
+        // 0.8秒后清除高亮，让它自然消失
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            if activeThoughtId == segment.id {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    activeThoughtId = nil
+                }
+            }
         }
         
         // 继续处理下一个句子
@@ -319,6 +309,17 @@ struct ThinkingProcessView: View {
             
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 displayedThoughts.append(segment)
+                // 设置新段落为活跃状态
+                activeThoughtId = segment.id
+            }
+            
+            // 0.8秒后清除高亮，让它自然消失
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                if activeThoughtId == segment.id {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        activeThoughtId = nil
+                    }
+                }
             }
             
             currentThoughtIndex += 1
@@ -349,6 +350,17 @@ struct ThinkingProcessView: View {
             
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 displayedThoughts.append(segment)
+                // 设置新段落为活跃状态
+                activeThoughtId = segment.id
+            }
+            
+            // 0.8秒后清除高亮，让它自然消失
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                if activeThoughtId == segment.id {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        activeThoughtId = nil
+                    }
+                }
             }
             
             currentThoughtIndex += 1
