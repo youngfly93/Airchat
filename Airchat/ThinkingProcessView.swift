@@ -55,12 +55,21 @@ struct ThinkingProcessView: View {
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(softBlue.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(softBlue.opacity(0.2), lineWidth: 1)
-                )
+            // 毛玻璃背景层
+            VisualEffectView(
+                material: .hudWindow,
+                blendingMode: .withinWindow
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                // 柔和色彩覆盖层
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(softBlue.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(softBlue.opacity(0.15), lineWidth: 0.5)
+                    )
+            )
         )
         .onAppear {
             startThinking()
@@ -137,6 +146,19 @@ struct ThinkingProcessView: View {
                 .padding(.vertical, 8)
             }
             .frame(maxHeight: 120) // 限制最大高度，更矮以增强滚动感
+            .mask(
+                // 渐变遮罩，增强朦胧感
+                LinearGradient(
+                    gradient: Gradient(stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: 0.1),
+                        .init(color: .black, location: 0.9),
+                        .init(color: .clear, location: 1)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             .onChange(of: displayedThoughts.count) { _, _ in
                 // 每当有新的思考内容添加时，自动滚动到底部
                 withAnimation(.easeOut(duration: 0.25)) {
@@ -153,14 +175,15 @@ struct ThinkingProcessView: View {
         HStack(alignment: .top, spacing: 8) {
             // 思考点图标
             Circle()
-                .fill(softBlue.opacity(0.3))
+                .fill(softBlue.opacity(0.4))
                 .frame(width: 6, height: 6)
                 .padding(.top, 6)
+                .opacity(0.8) // 增加朦胧感
             
             // 思考文本
             Text(text)
                 .font(.system(size: 11, weight: .regular))
-                .foregroundColor(.primary)
+                .foregroundColor(.primary.opacity(0.85)) // 增加朦胧感
                 .multilineTextAlignment(.leading)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
