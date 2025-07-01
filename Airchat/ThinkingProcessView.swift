@@ -23,7 +23,8 @@ struct ThinkingProcessView: View {
     var isDemo: Bool = false // 是否为演示模式
     var isStreaming: Bool = false // 是否为流式模式
     
-    // 定义柔和的蓝色主题
+    // 定义深色蓝色主题
+    private let darkBlue = Color(red: 0.1, green: 0.15, blue: 0.25)
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
     
     // MARK: - Data Models
@@ -55,21 +56,50 @@ struct ThinkingProcessView: View {
         }
         .padding(12)
         .background(
-            // 毛玻璃背景层
-            VisualEffectView(
-                material: .hudWindow,
-                blendingMode: .withinWindow
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                // 柔和色彩覆盖层
+            // 多层毛玻璃效果
+            ZStack {
+                // 底层毛玻璃
+                VisualEffectView(
+                    material: .underWindowBackground,
+                    blendingMode: .behindWindow
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                
+                // 中层深色渐变
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        darkBlue.opacity(0.8),
+                        darkBlue.opacity(0.6),
+                        darkBlue.opacity(0.7)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                
+                // 顶层毛玻璃
+                VisualEffectView(
+                    material: .hudWindow,
+                    blendingMode: .withinWindow
+                )
+                .opacity(0.6)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                
+                // 边框
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(softBlue.opacity(0.05))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(softBlue.opacity(0.15), lineWidth: 0.5)
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                darkBlue.opacity(0.5),
+                                darkBlue.opacity(0.3),
+                                darkBlue.opacity(0.4)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
                     )
-            )
+            }
         )
         .onAppear {
             startThinking()
@@ -97,7 +127,7 @@ struct ThinkingProcessView: View {
             // 思考图标（带动画）
             Image(systemName: "brain.head.profile")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(softBlue)
+                .foregroundColor(.white.opacity(0.9))
                 .scaleEffect(isCompleted ? 1.0 : 1.2)
                 .animation(
                     isCompleted ? .none : .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
@@ -107,7 +137,7 @@ struct ThinkingProcessView: View {
             // 计时器文本
             Text(isCompleted ? "思考完成" : "思考中 \(elapsedTime)s")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(isCompleted ? .secondary : softBlue)
+                .foregroundColor(isCompleted ? .white.opacity(0.7) : .white.opacity(0.9))
             
             Spacer()
             
@@ -115,11 +145,11 @@ struct ThinkingProcessView: View {
             if !isCompleted {
                 ProgressView()
                     .scaleEffect(0.7)
-                    .progressViewStyle(CircularProgressViewStyle(tint: softBlue))
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white.opacity(0.8)))
             } else {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(.green)
+                    .foregroundColor(.white.opacity(0.9))
             }
         }
     }
@@ -175,15 +205,14 @@ struct ThinkingProcessView: View {
         HStack(alignment: .top, spacing: 8) {
             // 思考点图标
             Circle()
-                .fill(softBlue.opacity(0.4))
+                .fill(.white.opacity(0.7))
                 .frame(width: 6, height: 6)
                 .padding(.top, 6)
-                .opacity(0.8) // 增加朦胧感
             
             // 思考文本
             Text(text)
                 .font(.system(size: 11, weight: .regular))
-                .foregroundColor(.primary.opacity(0.85)) // 增加朦胧感
+                .foregroundColor(.white.opacity(0.9)) // 白色文字，更好的对比度
                 .multilineTextAlignment(.leading)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
