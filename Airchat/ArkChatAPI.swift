@@ -161,6 +161,18 @@ final class ArkChatAPI {
         // Use provided model or default to selected model
         let modelToUse = model ?? selectedModel
         
+        // Debug: Print API request details
+        print("🌐 [API] Sending request to OpenRouter")
+        print("🌐 Model: \(modelToUse)")
+        print("🌐 Enable web search: \(enableWebSearch)")
+        print("🌐 Message count: \(apiMessages.count)")
+        
+        // Print message summary for debugging
+        for (index, message) in apiMessages.enumerated() {
+            let contentPreview = message.content.description.prefix(50)
+            print("🌐 Message[\(index)]: role=\(message.role), content=\"\(contentPreview)...\", tool_call_id=\(String(describing: message.tool_call_id))")
+        }
+        
         // Determine if this model supports reasoning
         let supportsReasoning = modelToUse.contains("gemini") || modelToUse.contains("minimax") || modelToUse.contains("o4-mini-high")
         
@@ -206,13 +218,34 @@ final class ArkChatAPI {
             tools: tools,
             tool_choice: toolChoice
         )
-        request.httpBody = try JSONEncoder().encode(payload)
         
+        // Debug: Print request payload
+        do {
+            let jsonData = try JSONEncoder().encode(payload)
+            request.httpBody = jsonData
+            
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                print("🌐 [API] Request payload size: \(jsonData.count) bytes")
+                // Only print first 500 chars to avoid flooding logs
+                let preview = jsonString.prefix(500)
+                print("🌐 [API] Request payload preview: \(preview)...")
+            }
+        } catch {
+            print("🌐 [API ERROR] Failed to encode request payload: \(error)")
+            throw error
+        }
+        
+        print("🌐 [API] Sending URLSession request...")
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        print("🌐 [API] URLSession request completed")
         
         // Check HTTP status code
         if let httpResponse = response as? HTTPURLResponse {
+            print("🌐 [API] HTTP Response status: \(httpResponse.statusCode)")
+            print("🌐 [API] HTTP Response headers: \(httpResponse.allHeaderFields)")
+            
             if httpResponse.statusCode != 200 {
+                print("🌐 [API ERROR] Non-200 status code detected: \(httpResponse.statusCode)")
                 // Try to read error response
                 var errorMessage = "HTTP \(httpResponse.statusCode)"
                 do {
@@ -223,6 +256,7 @@ final class ArkChatAPI {
                         }
                     }
                     if let errorString = String(data: errorData, encoding: .utf8) {
+                        print("🌐 [API ERROR] Error response body: \(errorString)")
                         if errorString.contains("No auth credentials found") {
                             errorMessage = "API密钥无效或已过期，请设置有效的OpenRouter API密钥"
                         } else {
@@ -230,31 +264,48 @@ final class ArkChatAPI {
                         }
                     }
                 } catch {
-                    // Could not read error response
+                    print("🌐 [API ERROR] Failed to read error response: \(error)")
                 }
                 throw NSError(domain: "ArkChatAPI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
             }
+        } else {
+            print("🌐 [API WARNING] Response is not HTTPURLResponse")
         }
         
         // Reset tool call accumulator for new request
         accumulatedToolCalls.removeAll()
+        print("🌐 [API] Tool call accumulator reset")
         
         return AsyncThrowingStream<StreamingChunk, Error> { continuation in
             Task {
                 do {
+                    print("🌐 [API] Starting to process streaming response")
+                    var lineCount = 0
+                    
                     for try await line in bytes.lines {
+                        lineCount += 1
+                        if lineCount <= 5 || lineCount % 20 == 0 {
+                            print("🌐 [API] Processing line \(lineCount): \(line.prefix(100))...")
+                        }
                         if line.hasPrefix("data: ") {
                             let jsonString = String(line.dropFirst(6))
                             if jsonString == "[DONE]" {
+                                print("🌐 [API] Received [DONE] signal")
                                 // Send any remaining accumulated tool calls
                                 if !accumulatedToolCalls.isEmpty {
+                                    print("🌐 [API] Processing \(accumulatedToolCalls.count) accumulated tool calls")
                                     let completedToolCalls = accumulatedToolCalls.values.compactMap { toolCall -> ToolCall? in
                                         // Only include tool calls that have at least a function name
                                         guard let function = toolCall.function,
-                                              let name = function.name else { return nil }
+                                              let name = function.name else { 
+                                            print("🌐 [API] Skipping incomplete tool call: \(toolCall)")
+                                            return nil 
+                                        }
+                                        print("🌐 [API] Completed tool call: \(name) with args: \(function.arguments ?? \"nil\")")
                                         return toolCall
                                     }
                                     if !completedToolCalls.isEmpty {
+                                        print("🌐 [API] Yielding \(completedToolCalls.count) completed tool calls")
                                         let chunk = StreamingChunk(
                                             content: nil,
                                             reasoning: nil,
@@ -262,8 +313,13 @@ final class ArkChatAPI {
                                             toolCalls: completedToolCalls
                                         )
                                         continuation.yield(chunk)
+                                    } else {
+                                        print("🌐 [API] No complete tool calls to yield")
                                     }
+                                } else {
+                                    print("🌐 [API] No accumulated tool calls")
                                 }
+                                print("🌐 [API] Finishing stream")
                                 continuation.finish()
                                 return
                             }
@@ -353,8 +409,11 @@ final class ArkChatAPI {
                             }
                         }
                     }
+                    print("🌐 [API] All lines processed, finishing stream normally")
                     continuation.finish()
                 } catch {
+                    print("🌐 [API ERROR] Stream processing failed: \(error)")
+                    print("🌐 Error type: \(type(of: error))")
                     continuation.finish(throwing: error)
                 }
             }

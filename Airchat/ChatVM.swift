@@ -346,13 +346,18 @@ final class ChatVM: ObservableObject {
     // 处理工具调用请求
     @MainActor
     private func handleToolCalls(_ toolCalls: [ToolCall]) async {
-        for toolCall in toolCalls {
+        print("🔧 [Step 1] Starting tool call processing with \(toolCalls.count) tool calls")
+        
+        for (index, toolCall) in toolCalls.enumerated() {
+            print("🔧 [Step 2.\(index + 1)] Processing tool call: \(String(describing: toolCall))")
+            
             if toolCall.function?.name == "web_search" {
                 do {
-                    // Debug: 打印原始参数以诊断问题
+                    print("🔧 [Step 3] Web search tool call detected")
+                    print("🔧 Tool call ID: \(String(describing: toolCall.id))")
                     print("🔧 Tool call function: \(String(describing: toolCall.function))")
                     let arguments = toolCall.function?.arguments ?? ""
-                    print("🔧 Tool call arguments: \(arguments)")
+                    print("🔧 Tool call arguments (raw): '\(arguments)'")
                     
                     var query: String? = nil
                     
@@ -362,10 +367,12 @@ final class ChatVM: ObservableObject {
                         if let jsonObject = try? JSONSerialization.jsonObject(with: queryData) as? [String: Any],
                            let q = jsonObject["query"] as? String {
                             query = q
+                            print("🔧 [Step 4a] Query parsed from JSON: '\(q)'")
                         } 
                         // 方式2: 可能是直接的字符串
                         else if arguments.trimmingCharacters(in: .whitespacesAndNewlines).first != "{" {
                             query = arguments.trimmingCharacters(in: .whitespacesAndNewlines)
+                            print("🔧 [Step 4b] Query parsed as direct string: '\(query!)'")
                         }
                         // 方式3: 尝试解码为带有不同键名的JSON
                         else if let jsonObject = try? JSONSerialization.jsonObject(with: queryData) as? [String: Any] {
@@ -373,10 +380,17 @@ final class ChatVM: ObservableObject {
                             query = jsonObject["q"] as? String ?? 
                                    jsonObject["search_query"] as? String ?? 
                                    jsonObject["text"] as? String
+                            print("🔧 [Step 4c] Query parsed from alternative JSON keys: '\(String(describing: query))'")
+                        } else {
+                            print("🔧 [Step 4d] Failed to parse arguments as JSON or string")
                         }
+                    } else {
+                        print("🔧 [Step 4e] Failed to convert arguments to Data")
                     }
                     
                     if let query = query, !query.isEmpty {
+                        print("🔧 [Step 5] Executing search with query: '\(query)'")
+                        
                         // 显示搜索状态
                         appendOrUpdateAssistant(StreamingChunk(
                             content: "\n\n🔍 正在搜索: \(query)\n\n",
@@ -385,30 +399,51 @@ final class ChatVM: ObservableObject {
                             toolCalls: nil
                         ))
                         
-                        // 执行搜索
-                        let searchResults = try await webSearchService.search(query: query)
-                        
-                        // 格式化搜索结果
-                        var resultText = "**搜索结果:**\n\n"
-                        for (index, result) in searchResults.enumerated() {
-                            resultText += "\(index + 1). **[\(result.title)](\(result.url))**\n"
-                            resultText += "   \(result.snippet)\n\n"
+                        do {
+                            // 执行搜索
+                            print("🔧 [Step 6] Calling webSearchService.search()")
+                            let searchResults = try await webSearchService.search(query: query)
+                            print("🔧 [Step 7] Search completed successfully with \(searchResults.count) results")
+                            
+                            // 格式化搜索结果
+                            var resultText = "**搜索结果:**\n\n"
+                            for (index, result) in searchResults.enumerated() {
+                                resultText += "\(index + 1). **[\(result.title)](\(result.url))**\n"
+                                resultText += "   \(result.snippet)\n\n"
+                            }
+                            
+                            print("🔧 [Step 8] Formatted search results (length: \(resultText.count) chars)")
+                            
+                            // 将搜索结果添加为工具消息到对话历史
+                            let toolMessage = ChatMessage(
+                                role: .tool, 
+                                content: resultText,
+                                toolCallId: toolCall.id
+                            )
+                            messages.append(toolMessage)
+                            print("🔧 [Step 9] Added tool message to conversation history")
+                            print("🔧 Total messages in conversation: \(messages.count)")
+                            
+                            // 继续调用 API 让 GPT-4o 分析搜索结果
+                            print("🔧 [Step 10] Starting continuation API call")
+                            await continueConversationAfterToolCall()
+                            print("🔧 [Step 11] Tool call processing completed successfully")
+                        } catch let searchError {
+                            print("🔧 [Step 6 ERROR] Search execution failed: \(searchError)")
+                            print("🔧 Search error type: \(type(of: searchError))")
+                            print("🔧 Search error localizedDescription: \(searchError.localizedDescription)")
+                            throw searchError
                         }
-                        
-                        // 将搜索结果添加为工具消息到对话历史
-                        let toolMessage = ChatMessage(
-                            role: .tool, 
-                            content: resultText,
-                            toolCallId: toolCall.id
-                        )
-                        messages.append(toolMessage)
-                        
-                        // 继续调用 API 让 GPT-4o 分析搜索结果
-                        await continueConversationAfterToolCall()
                     } else {
-                        throw NSError(domain: "ChatVM", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法解析搜索查询参数"])
+                        let parseError = NSError(domain: "ChatVM", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法解析搜索查询参数"])
+                        print("🔧 [Step 5 ERROR] Query parsing failed: \(parseError)")
+                        throw parseError
                     }
                 } catch {
+                    print("🔧 [TOOL CALL ERROR] Tool call processing failed: \(error)")
+                    print("🔧 Error type: \(type(of: error))")
+                    print("🔧 Error localizedDescription: \(error.localizedDescription)")
+                    
                     // 搜索失败时显示错误和详细信息
                     let errorArguments = toolCall.function?.arguments ?? ""
                     appendOrUpdateAssistant(StreamingChunk(
@@ -418,42 +453,80 @@ final class ChatVM: ObservableObject {
                         toolCalls: nil
                     ))
                 }
+            } else {
+                print("🔧 [Step 3 SKIP] Unknown tool function: \(String(describing: toolCall.function?.name))")
             }
         }
+        
+        print("🔧 [COMPLETE] All tool calls processed")
     }
     
     // 工具调用后继续对话
     @MainActor
     private func continueConversationAfterToolCall() async {
+        print("🔧 [CONTINUE Step 1] Starting continuation API call")
+        print("🔧 Current model: \(modelConfig.selectedModel.id)")
+        print("🔧 Current provider: \(modelConfig.selectedModel.provider)")
+        print("🔧 Messages in conversation before API call: \(messages.count)")
+        
+        // 打印最近几条消息以验证工具消息已正确添加
+        for (index, message) in messages.suffix(3).enumerated() {
+            print("🔧 Message[\(messages.count - 3 + index)]: role=\(message.role), content_length=\(message.content.displayText.count), toolCallId=\(String(describing: message.toolCallId))")
+        }
+        
         do {
             let stream: AsyncThrowingStream<StreamingChunk, Error>
             
             // 根据模型提供商选择正确的 API
             if modelConfig.selectedModel.provider == "Google Official" {
+                print("🔧 [CONTINUE Step 2a] Using Google Official API")
                 // 使用官方 Gemini API
                 let modelName = modelConfig.selectedModel.id.replacingOccurrences(of: "google-official/", with: "")
+                print("🔧 Model name for Gemini: \(modelName)")
                 stream = try await geminiAPI.send(messages: messages, stream: true, model: modelName)
             } else {
+                print("🔧 [CONTINUE Step 2b] Using OpenRouter API")
                 // 使用 OpenRouter API
                 api.selectedModel = modelConfig.selectedModel.id
+                print("🔧 API model set to: \(api.selectedModel)")
                 
                 // 工具调用后继续对话，不需要再次启用工具
+                print("🔧 [CONTINUE Step 3] Sending API request with webSearch disabled")
                 stream = try await api.send(messages: messages, stream: true, enableWebSearch: false)
             }
             
+            print("🔧 [CONTINUE Step 4] API stream created successfully, starting to process chunks")
+            var chunkCount = 0
+            
             for try await chunk in stream {
+                chunkCount += 1
+                print("🔧 [CONTINUE Step 5.\(chunkCount)] Processing chunk: content=\(String(describing: chunk.content)), reasoning=\(String(describing: chunk.reasoning))")
                 appendOrUpdateAssistant(chunk)
             }
+            
+            print("🔧 [CONTINUE Step 6] Stream completed with \(chunkCount) chunks")
             
             // 确保最后的字符都被显示
             flushRemainingCharacters()
             stopTypewriterEffect()
+            print("🔧 [CONTINUE Step 7] Typewriter effect stopped")
             
             // 最终滚动到底部
             Task { @MainActor in
                 triggerNormalScroll()
             }
+            print("🔧 [CONTINUE Step 8] Continuation completed successfully")
         } catch {
+            print("🔧 [CONTINUE ERROR] Continuation API call failed: \(error)")
+            print("🔧 Error type: \(type(of: error))")
+            print("🔧 Error localizedDescription: \(error.localizedDescription)")
+            
+            if let nsError = error as NSError? {
+                print("🔧 NSError domain: \(nsError.domain)")
+                print("🔧 NSError code: \(nsError.code)")
+                print("🔧 NSError userInfo: \(nsError.userInfo)")
+            }
+            
             // 确保错误情况下也显示所有字符
             flushRemainingCharacters()
             stopTypewriterEffect()
