@@ -458,7 +458,14 @@ struct ChatWindow: View {
                     if let reasoning = message.reasoning, 
                        !reasoning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                        vm.modelConfig.selectedModel.supportsReasoning {
-                        CollapsibleThinkingView(reasoning: reasoning)
+                        // 只有当这是最后一条助手消息且正在加载时，才是流式模式
+                        let isLastAssistantMessage = vm.messages.last(where: { $0.role == .assistant })?.id == message.id
+                        let isStreamingThisMessage = isLastAssistantMessage && vm.isLoading
+                        
+                        CollapsibleThinkingView(
+                            reasoning: reasoning,
+                            isCompleted: !isStreamingThisMessage
+                        )
                             .padding(.bottom, 4)
                             .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }

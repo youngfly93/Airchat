@@ -9,8 +9,10 @@ import SwiftUI
 
 struct CollapsibleThinkingView: View {
     let reasoning: String
+    var isCompleted: Bool = false
     @State private var isExpanded = false
     @State private var contentHeight: CGFloat = 0
+    @State private var useScrollingMode = true // 默认使用滚动模式
     
     // 定义更柔和的蓝色
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
@@ -46,77 +48,100 @@ struct CollapsibleThinkingView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Header with toggle button
-            Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    isExpanded.toggle()
-                }
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "lightbulb")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-                    
-                    Text("思考过程")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    if !shouldAutoExpand {
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 10, weight: .medium))
+        if useScrollingMode && !processedReasoning.isEmpty {
+            // 新的滚动思考模式
+            ThinkingProcessView(
+                reasoning: processedReasoning,
+                onComplete: nil,
+                isDemo: false,
+                isStreaming: !isCompleted
+            )
+        } else {
+            // 原来的折叠模式
+            VStack(alignment: .leading, spacing: 8) {
+                // Header with toggle button
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        isExpanded.toggle()
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "lightbulb")
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
+                        
+                        Text("思考过程")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        // 模式切换按钮
+                        Button(action: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                useScrollingMode.toggle()
+                            }
+                        }) {
+                            Image(systemName: useScrollingMode ? "list.bullet" : "scroll")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        if !shouldAutoExpand {
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
-            }
-            .buttonStyle(.plain)
-            .disabled(shouldAutoExpand)
-            
-            // Content
-            VStack(alignment: .leading, spacing: 4) {
-                if isExpanded || shouldAutoExpand {
-                    ScrollView(.vertical, showsIndicators: shouldAutoExpand ? false : true) {
-                        Text(processedReasoning)
+                .buttonStyle(.plain)
+                .disabled(shouldAutoExpand)
+                
+                // Content
+                VStack(alignment: .leading, spacing: 4) {
+                    if isExpanded || shouldAutoExpand {
+                        ScrollView(.vertical, showsIndicators: shouldAutoExpand ? false : true) {
+                            Text(processedReasoning)
+                                .font(.system(size: 12, weight: .regular, design: .default))
+                                .foregroundColor(.secondary)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 4)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .background(GeometryReader { geometry in
+                                    Color.clear
+                                        .preference(
+                                            key: ContentHeightKey.self,
+                                            value: geometry.size.height
+                                        )
+                                })
+                        }
+                        .frame(height: shouldAutoExpand ? nil : min(max(100, contentHeight), 300))
+                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: contentHeight)
+                    } else {
+                        Text(previewText)
                             .font(.system(size: 12, weight: .regular, design: .default))
                             .foregroundColor(.secondary)
-                            .textSelection(.enabled)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 4)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .background(GeometryReader { geometry in
-                                Color.clear
-                                    .preference(
-                                        key: ContentHeightKey.self,
-                                        value: geometry.size.height
-                                    )
-                            })
                     }
-                    .frame(height: shouldAutoExpand ? nil : min(max(100, contentHeight), 300))
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: contentHeight)
-                } else {
-                    Text(previewText)
-                        .font(.system(size: 12, weight: .regular, design: .default))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(softBlue.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(softBlue.opacity(0.15), lineWidth: 0.5)
+                        )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(softBlue.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(softBlue.opacity(0.15), lineWidth: 0.5)
-                    )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-        .onPreferenceChange(ContentHeightKey.self) { height in
-            contentHeight = height
+            .onPreferenceChange(ContentHeightKey.self) { height in
+                contentHeight = height
+            }
         }
     }
 }
@@ -139,7 +164,7 @@ struct ContentHeightKey: PreferenceKey {
         **Assessing User Intent**
         
         The user is asking about my capabilities in Chinese. They want to understand what I can help them with.
-        """)
+        """, isCompleted: false)
         .padding()
         .frame(width: 300)
     }
