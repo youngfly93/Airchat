@@ -317,13 +317,36 @@ final class ChatVM: ObservableObject {
     @MainActor
     private func handleToolCalls(_ toolCalls: [ToolCall]) async {
         for toolCall in toolCalls {
-            if toolCall.function.name == "web_search" {
+            if toolCall.function?.name == "web_search" {
                 do {
-                    // 解析搜索查询参数
-                    if let queryData = toolCall.function.arguments.data(using: .utf8),
-                       let jsonObject = try JSONSerialization.jsonObject(with: queryData) as? [String: Any],
-                       let query = jsonObject["query"] as? String {
-                        
+                    // Debug: 打印原始参数以诊断问题
+                    print("🔧 Tool call function: \(String(describing: toolCall.function))")
+                    let arguments = toolCall.function?.arguments ?? ""
+                    print("🔧 Tool call arguments: \(arguments)")
+                    
+                    var query: String? = nil
+                    
+                    // 尝试不同的解析方式
+                    if let queryData = arguments.data(using: .utf8) {
+                        // 方式1: 标准JSON解析
+                        if let jsonObject = try? JSONSerialization.jsonObject(with: queryData) as? [String: Any],
+                           let q = jsonObject["query"] as? String {
+                            query = q
+                        } 
+                        // 方式2: 可能是直接的字符串
+                        else if arguments.trimmingCharacters(in: .whitespacesAndNewlines).first != "{" {
+                            query = arguments.trimmingCharacters(in: .whitespacesAndNewlines)
+                        }
+                        // 方式3: 尝试解码为带有不同键名的JSON
+                        else if let jsonObject = try? JSONSerialization.jsonObject(with: queryData) as? [String: Any] {
+                            // 尝试其他可能的键名
+                            query = jsonObject["q"] as? String ?? 
+                                   jsonObject["search_query"] as? String ?? 
+                                   jsonObject["text"] as? String
+                        }
+                    }
+                    
+                    if let query = query, !query.isEmpty {
                         // 显示搜索状态
                         appendOrUpdateAssistant(StreamingChunk(
                             content: "\n\n🔍 正在搜索: \(query)\n\n",
@@ -349,11 +372,14 @@ final class ChatVM: ObservableObject {
                             thinking: nil,
                             toolCalls: nil
                         ))
+                    } else {
+                        throw NSError(domain: "ChatVM", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法解析搜索查询参数"])
                     }
                 } catch {
-                    // 搜索失败时显示错误
+                    // 搜索失败时显示错误和详细信息
+                    let errorArguments = toolCall.function?.arguments ?? ""
                     appendOrUpdateAssistant(StreamingChunk(
-                        content: "\n❌ 搜索失败: \(error.localizedDescription)\n\n",
+                        content: "\n❌ 搜索失败: \(error.localizedDescription)\n参数: \(errorArguments)\n\n",
                         reasoning: nil,
                         thinking: nil,
                         toolCalls: nil

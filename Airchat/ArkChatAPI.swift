@@ -15,14 +15,18 @@ struct StreamingChunk {
 }
 
 struct ToolCall: Codable {
-    let id: String
-    let type: String
-    let function: ToolCallFunction
+    var id: String?
+    var type: String?
+    var function: ToolCallFunction?
+    var index: Int?
+    
+    // OpenAI的流式API可能会分块发送tool call
+    // 需要处理部分数据的情况
 }
 
 struct ToolCallFunction: Codable {
-    let name: String
-    let arguments: String
+    let name: String?
+    let arguments: String?
 }
 
 struct StreamResponse: Codable {
@@ -52,6 +56,9 @@ final class ArkChatAPI {
     
     // Model configuration
     var selectedModel: String = "google/gemini-2.5-pro"
+    
+    // Tool call accumulator for streaming
+    private var accumulatedToolCalls: [Int: ToolCall] = [:]
     
     struct Payload: Codable {
         let model: String
@@ -218,6 +225,9 @@ final class ArkChatAPI {
             }
         }
         
+        // Reset tool call accumulator for new request
+        accumulatedToolCalls.removeAll()
+        
         return AsyncThrowingStream<StreamingChunk, Error> { continuation in
             Task {
                 do {
@@ -225,6 +235,24 @@ final class ArkChatAPI {
                         if line.hasPrefix("data: ") {
                             let jsonString = String(line.dropFirst(6))
                             if jsonString == "[DONE]" {
+                                // Send any remaining accumulated tool calls
+                                if !accumulatedToolCalls.isEmpty {
+                                    let completedToolCalls = accumulatedToolCalls.values.compactMap { toolCall -> ToolCall? in
+                                        // Only include tool calls that have at least a function name
+                                        guard let function = toolCall.function,
+                                              let name = function.name else { return nil }
+                                        return toolCall
+                                    }
+                                    if !completedToolCalls.isEmpty {
+                                        let chunk = StreamingChunk(
+                                            content: nil,
+                                            reasoning: nil,
+                                            thinking: nil,
+                                            toolCalls: completedToolCalls
+                                        )
+                                        continuation.yield(chunk)
+                                    }
+                                }
                                 continuation.finish()
                                 return
                             }
@@ -242,13 +270,81 @@ final class ArkChatAPI {
                                     print("🎯 Thinking: \(delta.thinking ?? "nil")")
                                 }
                                 
-                                let chunk = StreamingChunk(
-                                    content: delta.content,
-                                    reasoning: delta.reasoning ?? delta.thinking,
-                                    thinking: delta.thinking,
-                                    toolCalls: delta.tool_calls
-                                )
-                                continuation.yield(chunk)
+                                // Handle incremental tool calls
+                                var processedToolCalls: [ToolCall]? = nil
+                                if let toolCalls = delta.tool_calls {
+                                    for toolCall in toolCalls {
+                                        if let index = toolCall.index {
+                                            // Accumulate tool call data
+                                            if var existing = accumulatedToolCalls[index] {
+                                                // Update existing tool call
+                                                if let id = toolCall.id {
+                                                    existing.id = id
+                                                }
+                                                if let type = toolCall.type {
+                                                    existing.type = type
+                                                }
+                                                if let function = toolCall.function {
+                                                    if existing.function == nil {
+                                                        existing.function = function
+                                                    } else {
+                                                        // Merge function data
+                                                        if let name = function.name {
+                                                            existing.function = ToolCallFunction(
+                                                                name: name,
+                                                                arguments: existing.function?.arguments
+                                                            )
+                                                        }
+                                                        if let args = function.arguments {
+                                                            let currentArgs = existing.function?.arguments ?? ""
+                                                            existing.function = ToolCallFunction(
+                                                                name: existing.function?.name,
+                                                                arguments: currentArgs + args
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                accumulatedToolCalls[index] = existing
+                                            } else {
+                                                // New tool call
+                                                accumulatedToolCalls[index] = toolCall
+                                            }
+                                            
+                                            // Debug for GPT-4o
+                                            if modelToUse.contains("gpt-4o") {
+                                                print("🔧 Tool call update - Index: \(index)")
+                                                print("🔧 Current state: \(accumulatedToolCalls[index]!)")
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Check if we have complete tool calls to send
+                                    processedToolCalls = accumulatedToolCalls.values.compactMap { toolCall -> ToolCall? in
+                                        // Only include tool calls that have complete data
+                                        guard let function = toolCall.function,
+                                              let name = function.name,
+                                              let arguments = function.arguments,
+                                              !arguments.isEmpty else { return nil }
+                                        return toolCall
+                                    }
+                                }
+                                
+                                // Only yield chunk if we have content or complete tool calls
+                                if delta.content != nil || 
+                                   delta.reasoning != nil || 
+                                   delta.thinking != nil || 
+                                   (processedToolCalls != nil && !processedToolCalls!.isEmpty) {
+                                    let chunk = StreamingChunk(
+                                        content: delta.content,
+                                        reasoning: delta.reasoning ?? delta.thinking,
+                                        thinking: delta.thinking,
+                                        toolCalls: processedToolCalls
+                                    )
+                                    continuation.yield(chunk)
+                                }
+                            } else {
+                                // Debug: Print raw JSON for failed parsing
+                                print("⚠️ Failed to parse stream response: \(jsonString)")
                             }
                         }
                     }
