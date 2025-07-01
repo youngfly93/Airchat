@@ -169,7 +169,13 @@ final class ArkChatAPI {
         
         // Print message summary for debugging
         for (index, message) in apiMessages.enumerated() {
-            let contentPreview = message.content.description.prefix(50)
+            let contentPreview: String
+            switch message.content {
+            case .text(let text):
+                contentPreview = String(text.prefix(50))
+            case .multimodal(let parts):
+                contentPreview = "multimodal(\(parts.count) parts)"
+            }
             print("🌐 Message[\(index)]: role=\(message.role), content=\"\(contentPreview)...\", tool_call_id=\(String(describing: message.tool_call_id))")
         }
         
@@ -301,7 +307,7 @@ final class ArkChatAPI {
                                             print("🌐 [API] Skipping incomplete tool call: \(toolCall)")
                                             return nil 
                                         }
-                                        print("🌐 [API] Completed tool call: \(name) with args: \(function.arguments ?? \"nil\")")
+                                        print("🌐 [API] Completed tool call: \(name) with args: \(function.arguments ?? "nil")")
                                         return toolCall
                                     }
                                     if !completedToolCalls.isEmpty {
