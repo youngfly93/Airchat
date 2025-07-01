@@ -100,12 +100,20 @@ final class ArkChatAPI {
         let role: String
         let content: APIContent
         let tool_call_id: String?
+        let tool_calls: [APIToolCall]?
         
-        init(role: String, content: APIContent, tool_call_id: String? = nil) {
+        init(role: String, content: APIContent, tool_call_id: String? = nil, tool_calls: [APIToolCall]? = nil) {
             self.role = role
             self.content = content
             self.tool_call_id = tool_call_id
+            self.tool_calls = tool_calls
         }
+    }
+    
+    struct APIToolCall: Codable {
+        let id: String
+        let type: String
+        let function: ToolCallFunction
     }
     
     enum APIContent: Codable {
@@ -151,10 +159,20 @@ final class ArkChatAPI {
             case .multimodal(let parts):
                 apiContent = .multimodal(parts)
             }
+            
+            // Convert tool calls if present
+            let apiToolCalls: [APIToolCall]? = message.toolCalls?.compactMap { toolCall in
+                guard let id = toolCall.id,
+                      let type = toolCall.type,
+                      let function = toolCall.function else { return nil }
+                return APIToolCall(id: id, type: type, function: function)
+            }
+            
             return APIMessage(
                 role: message.role.rawValue, 
                 content: apiContent,
-                tool_call_id: message.toolCallId
+                tool_call_id: message.toolCallId,
+                tool_calls: apiToolCalls
             )
         }
         
@@ -176,7 +194,8 @@ final class ArkChatAPI {
             case .multimodal(let parts):
                 contentPreview = "multimodal(\(parts.count) parts)"
             }
-            print("🌐 Message[\(index)]: role=\(message.role), content=\"\(contentPreview)...\", tool_call_id=\(String(describing: message.tool_call_id))")
+            let toolCallsInfo = message.tool_calls != nil ? "tool_calls=\(message.tool_calls!.count)" : "tool_calls=nil"
+            print("🌐 Message[\(index)]: role=\(message.role), content=\"\(contentPreview)...\", tool_call_id=\(String(describing: message.tool_call_id)), \(toolCallsInfo)")
         }
         
         // Determine if this model supports reasoning

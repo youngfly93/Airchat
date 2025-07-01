@@ -17,21 +17,24 @@ struct ChatMessage: Identifiable, Codable {
     var content: MessageContent
     var reasoning: String?
     var toolCallId: String? // For tool messages
+    var toolCalls: [ToolCall]? // For assistant messages with tool calls
     
-    init(role: Role, content: String, reasoning: String? = nil, toolCallId: String? = nil) {
+    init(role: Role, content: String, reasoning: String? = nil, toolCallId: String? = nil, toolCalls: [ToolCall]? = nil) {
         self.id = UUID()
         self.role = role
         self.content = .text(content)
         self.reasoning = reasoning
         self.toolCallId = toolCallId
+        self.toolCalls = toolCalls
     }
     
-    init(role: Role, content: MessageContent, reasoning: String? = nil, toolCallId: String? = nil) {
+    init(role: Role, content: MessageContent, reasoning: String? = nil, toolCallId: String? = nil, toolCalls: [ToolCall]? = nil) {
         self.id = UUID()
         self.role = role
         self.content = content
         self.reasoning = reasoning
         self.toolCallId = toolCallId
+        self.toolCalls = toolCalls
     }
 }
 

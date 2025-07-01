@@ -196,6 +196,12 @@ final class ChatVM: ObservableObject {
         
         // 处理工具调用
         if let toolCalls = chunk.toolCalls {
+            // 将tool_calls信息添加到最后一条assistant消息中
+            if let lastIndex = messages.lastIndex(where: { $0.role == .assistant }) {
+                messages[lastIndex].toolCalls = toolCalls
+                print("🔧 Added \(toolCalls.count) tool calls to assistant message")
+            }
+            
             Task {
                 await handleToolCalls(toolCalls)
             }
