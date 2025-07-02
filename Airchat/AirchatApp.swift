@@ -352,11 +352,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startFrame = panel.frame
         targetFrame = startFrame
         
-        // 优化动画逻辑：保持窗口中心位置
-        let currentCenterX = startFrame.midX
+        // 优化动画逻辑：保持底部位置固定，向上展开
         targetFrame.size = targetSize
-        targetFrame.origin.x = currentCenterX - targetSize.width / 2
-        targetFrame.origin.y = startFrame.maxY - targetSize.height
+        targetFrame.origin.x = startFrame.midX - targetSize.width / 2  // 水平居中
+        // 保持底部位置固定：新窗口底部 = 原窗口底部
+        targetFrame.origin.y = startFrame.origin.y + startFrame.height - targetSize.height
         
         // 立即切换SwiftUI内容
         NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
