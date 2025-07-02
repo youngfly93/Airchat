@@ -113,7 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var isCollapsed = false
     
     // 定义折叠和展开的尺寸
-    private let collapsedSize = NSSize(width: 60, height: 60)
+    private let collapsedSize = NSSize(width: 480, height: 64)  // 输入框尺寸
     private let expandedSize = NSSize(width: 360, height: 520)
     
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -181,17 +181,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return 
         }
         
-        // 确保窗口处于展开状态
-        if isCollapsed {
-            isCollapsed = false
-            let expandedFrame = NSRect(
-                x: panel.frame.origin.x,
-                y: panel.frame.origin.y,
-                width: expandedSize.width,
-                height: expandedSize.height
-            )
-            panel.setFrame(expandedFrame, display: false)
-            NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": false])
+        // 如果是首次显示，确保状态同步
+        if panel.frame.size == .zero || (!hasRestoredPosition && isCollapsed) {
+            // 初始化为折叠状态
+            isCollapsed = true
+            NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": true])
         }
         
         // Get the main screen bounds
@@ -240,28 +234,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func getDefaultWindowPosition() -> NSRect {
-        if let button = statusItem.button {
-            let buttonRect = button.convert(button.bounds, to: nil)
-            let screenRect = button.window?.convertToScreen(buttonRect) ?? .zero
-            
+        guard let screen = NSScreen.main else {
+            return NSRect(x: 100, y: 100, width: isCollapsed ? 480 : 360, height: isCollapsed ? 64 : 520)
+        }
+        
+        let screenFrame = screen.visibleFrame
+        let windowSize = isCollapsed ? collapsedSize : expandedSize
+        
+        if isCollapsed {
+            // 输入框模式：屏幕底部居中
             return NSRect(
-                x: screenRect.midX - 180,
-                y: screenRect.minY - 530,
-                width: 360,
-                height: 520
+                x: screenFrame.midX - windowSize.width / 2,
+                y: screenFrame.minY + 80, // 距离屏幕底部80像素
+                width: windowSize.width,
+                height: windowSize.height
             )
         } else {
-            // Fallback to center of screen
-            guard let screen = NSScreen.main else {
-                return NSRect(x: 100, y: 100, width: 360, height: 520)
+            // 展开模式：原有逻辑
+            if let button = statusItem.button {
+                let buttonRect = button.convert(button.bounds, to: nil)
+                let screenRect = button.window?.convertToScreen(buttonRect) ?? .zero
+                
+                return NSRect(
+                    x: screenRect.midX - 180,
+                    y: screenRect.minY - 530,
+                    width: 360,
+                    height: 520
+                )
+            } else {
+                // Fallback to center of screen
+                return NSRect(
+                    x: screenFrame.midX - 180,
+                    y: screenFrame.midY - 260,
+                    width: 360,
+                    height: 520
+                )
             }
-            let screenFrame = screen.visibleFrame
-            return NSRect(
-                x: screenFrame.midX - 180,
-                y: screenFrame.midY - 260,
-                width: 360,
-                height: 520
-            )
         }
     }
     
@@ -343,9 +351,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 计算动画参数
         startFrame = panel.frame
         targetFrame = startFrame
-        targetFrame.origin.x = startFrame.maxX - targetSize.width
-        targetFrame.origin.y = startFrame.maxY - targetSize.height
+        
+        // 优化动画逻辑：保持窗口中心位置
+        let currentCenterX = startFrame.midX
         targetFrame.size = targetSize
+        targetFrame.origin.x = currentCenterX - targetSize.width / 2
+        targetFrame.origin.y = startFrame.maxY - targetSize.height
         
         // 立即切换SwiftUI内容
         NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
@@ -438,8 +449,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func makePanel() {
+        // 默认以折叠状态（输入框）开始
+        isCollapsed = true
         panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: expandedSize.width, height: expandedSize.height),
+            contentRect: NSRect(x: 0, y: 0, width: collapsedSize.width, height: collapsedSize.height),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: true
@@ -556,9 +569,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let currentFrame = panel.frame
         
         // Determine if collapsed based on window size
-        // Collapsed: 60x60, Expanded: 360x520
-        let isCollapsed = currentFrame.width <= 80 // Some tolerance
-        let cornerRadius: CGFloat = isCollapsed ? 18 : 20
+        // Collapsed: 480x64, Expanded: 360x520
+        let isCollapsed = currentFrame.width >= 480 // 输入框模式更宽
+        let cornerRadius: CGFloat = isCollapsed ? 32 : 20
         
         applyWindowMask(cornerRadius: cornerRadius)
     }

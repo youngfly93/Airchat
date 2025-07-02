@@ -13,7 +13,8 @@ struct ChatWindow: View {
     @StateObject private var vm = ChatVM()
     @State private var isCollapsed = false
     @State private var animationProgress: Double = 1.0
-    @State private var isInputFocused = false
+    @FocusState private var isInputFocused: Bool
+    @FocusState private var isCollapsedInputFocused: Bool
     
     // 定义更柔和的蓝色
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
@@ -33,39 +34,168 @@ struct ChatWindow: View {
                let collapsed = userInfo["isCollapsed"] as? Bool {
                 // 立即切换，不使用任何SwiftUI动画
                 isCollapsed = collapsed
+                
+                // 设置焦点
+                if collapsed {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isCollapsedInputFocused = true
+                    }
+                } else {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isInputFocused = true
+                    }
+                }
             }
         }
     }
     
     private var collapsedView: some View {
-        ZStack {
-            // 主要点击区域 - 单击展开
-            Rectangle()
-                .fill(Color.clear)
-                .frame(width: 60, height: 60)
-                .contentShape(Rectangle())
-                .onTapGesture {
+        VStack(spacing: 8) {
+            // 如果有选中的图片，显示预览
+            if !vm.selectedImages.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(vm.selectedImages) { image in
+                            collapsedImagePreview(image)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .frame(height: 60)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            
+            // 主输入框
+            HStack(spacing: 0) {
+            // 左侧功能按钮组
+            HStack(spacing: 12) {
+                // 添加按钮
+                Button(action: {
+                    vm.showFileImporter = true
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                
+                // 网络图标
+                Button(action: {
+                    if vm.supportsWebSearch {
+                        vm.toggleWebSearch()
+                    }
+                }) {
+                    Image(systemName: vm.isWebSearchEnabled ? "globe.badge.chevron.backward" : "globe")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(
+                            vm.supportsWebSearch 
+                                ? (vm.isWebSearchEnabled ? softBlue : .primary.opacity(0.7))
+                                : .secondary
+                        )
+                        .opacity(vm.supportsWebSearch ? 1.0 : 0.5)
+                }
+                .buttonStyle(.plain)
+                .disabled(!vm.supportsWebSearch)
+                
+                // 刷新图标
+                Button(action: {
+                    // 展开窗口
                     WindowManager.shared.toggleWindowState(collapsed: false)
+                }) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                .help("展开窗口")
+                
+                // 模型显示
+                Text(vm.modelConfig.selectedModel.name)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.leading, 16)
+            
+            Spacer()
+            
+            // 中间输入框
+            TextField("询问任何问题…", text: $vm.composing)
+                .textFieldStyle(.plain)
+                .font(.system(size: 15))
+                .focusable()
+                .focused($isCollapsedInputFocused)
+                .onSubmit {
+                    let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
+                    if hasContent {
+                        // 展开窗口并发送消息
+                        WindowManager.shared.toggleWindowState(collapsed: false)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            vm.send()
+                        }
+                    }
                 }
             
-            // 主图标 - 不可点击
-            Image(systemName: "bubble.left.and.bubble.right.fill")
-                .font(.title2)
-                .foregroundColor(softBlue)
-                .allowsHitTesting(false)
+            Spacer()
             
+            // 右侧按钮组
+            HStack(spacing: 12) {
+                // 麦克风按钮
+                Button(action: {}) {
+                    Image(systemName: "mic")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                
+                // 发送按钮
+                Button(action: {
+                    let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
+                    if hasContent {
+                        WindowManager.shared.toggleWindowState(collapsed: false)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            vm.send()
+                        }
+                    }
+                }) {
+                    let canSend = !vm.composing.isEmpty || !vm.selectedImages.isEmpty
+                    Image(systemName: canSend ? "arrow.up.circle.fill" : "arrow.up.circle")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(canSend ? softBlue : .secondary)
+                }
+                .buttonStyle(.plain)
+                .disabled(vm.composing.isEmpty && vm.selectedImages.isEmpty)
+            }
+            .padding(.trailing, 16)
+            }
+            .frame(width: 480, height: 64)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .stroke(
+                        isCollapsedInputFocused ? softBlue.opacity(0.5) : Color.white.opacity(0.2),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
         }
-        .frame(width: 60, height: 60)
-        .background(
-            AnimationCompatibleVisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.3), lineWidth: 1)
-        )
-        // 简化阴影以提高性能
-        .shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 6)
+        .fileImporter(
+            isPresented: $vm.showFileImporter,
+            allowedContentTypes: [.image, .pdf],
+            allowsMultipleSelection: true
+        ) { result in
+            vm.handleFileSelection(result)
+        }
+        .onTapGesture {
+            // 点击输入框时聚焦
+            isCollapsedInputFocused = true
+        }
+        .onAppear {
+            // 窗口显示时自动聚焦
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isCollapsedInputFocused = true
+            }
+        }
     }
     
     private var expandedView: some View {
@@ -738,5 +868,66 @@ struct ChatWindow: View {
             vm.handleFileSelection(result)
         }
         .help("添加文件或图片")
+    }
+    
+    // 折叠状态下的图片预览
+    @ViewBuilder
+    private func collapsedImagePreview(_ image: AttachedImage) -> some View {
+        ZStack(alignment: .topTrailing) {
+            if image.fileType == .image {
+                AsyncImage(url: URL(string: image.url)) { asyncImage in
+                    switch asyncImage {
+                    case .success(let img):
+                        img
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 50, height: 50)
+                            .clipped()
+                            .cornerRadius(8)
+                    case .failure(_):
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(width: 50, height: 50)
+                            .cornerRadius(8)
+                            .overlay(
+                                Image(systemName: "photo")
+                                    .foregroundColor(.secondary)
+                            )
+                    case .empty:
+                        ProgressView()
+                            .frame(width: 50, height: 50)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            } else {
+                // File preview
+                VStack(spacing: 2) {
+                    Image(systemName: image.fileType.systemIcon)
+                        .font(.system(size: 16))
+                        .foregroundColor(softBlue)
+                    
+                    if let fileName = image.fileName {
+                        Text(fileName)
+                            .font(.system(size: 7))
+                            .lineLimit(1)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(width: 50, height: 50)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            }
+            
+            Button(action: {
+                vm.removeImage(image)
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white)
+                    .background(Color.black.opacity(0.6), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .offset(x: 4, y: -4)
+        }
     }
 }
