@@ -242,10 +242,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let windowSize = isCollapsed ? collapsedSize : expandedSize
         
         if isCollapsed {
-            // 输入框模式：屏幕底部居中
+            // 输入框模式：屏幕中央
             return NSRect(
                 x: screenFrame.midX - windowSize.width / 2,
-                y: screenFrame.minY + 80, // 距离屏幕底部80像素
+                y: screenFrame.midY - windowSize.height / 2, // 垂直居中
                 width: windowSize.width,
                 height: windowSize.height
             )
