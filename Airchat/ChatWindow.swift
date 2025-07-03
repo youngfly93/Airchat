@@ -172,9 +172,9 @@ struct ChatWindow: View {
             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .stroke(
-                        isCollapsedInputFocused ? softBlue.opacity(0.5) : Color.white.opacity(0.2),
-                        lineWidth: 1
+                    .strokeBorder(
+                        isCollapsedInputFocused ? softBlue.opacity(0.3) : Color.white.opacity(0.1),
+                        lineWidth: 0.5
                     )
             )
             .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
