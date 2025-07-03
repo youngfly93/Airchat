@@ -179,6 +179,14 @@ struct ChatWindow: View {
             )
             .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
         }
+        .focusable()
+        .onKeyPress { press in
+            if press.key == .init("v") && press.modifiers.contains(.command) {
+                vm.handlePaste()
+                return .handled
+            }
+            return .ignored
+        }
         .fileImporter(
             isPresented: $vm.showFileImporter,
             allowedContentTypes: [.image, .pdf],
@@ -195,6 +203,35 @@ struct ChatWindow: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isCollapsedInputFocused = true
             }
+        }
+        .onDrop(of: [.fileURL, .image, .png, .jpeg, .tiff], isTargeted: nil) { providers in
+            for provider in providers {
+                // 优先尝试作为文件URL处理
+                if provider.canLoadObject(ofClass: URL.self) {
+                    _ = provider.loadObject(ofClass: URL.self) { url, error in
+                        guard let url = url else { return }
+                        
+                        // 检查是否为图片文件
+                        let imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "heic", "webp"]
+                        if imageExtensions.contains(url.pathExtension.lowercased()) {
+                            DispatchQueue.main.async {
+                                self.vm.handleDroppedImageFile(at: url)
+                            }
+                        }
+                    }
+                }
+                // 尝试作为图片数据处理
+                else if provider.hasItemConformingToTypeIdentifier("public.image") {
+                    _ = provider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, error in
+                        guard let data = data,
+                              let image = NSImage(data: data) else { return }
+                        DispatchQueue.main.async {
+                            self.vm.handleDroppedImage(image)
+                        }
+                    }
+                }
+            }
+            return true
         }
     }
     

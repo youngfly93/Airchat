@@ -372,6 +372,16 @@ final class ChatVM: ObservableObject {
         }
     }
     
+    func handleDroppedImage(_ image: NSImage) {
+        processImage(image)
+    }
+    
+    func handleDroppedImageFile(at url: URL) {
+        if let image = NSImage(contentsOf: url) {
+            processImage(image)
+        }
+    }
+    
     // 处理工具调用请求
     @MainActor
     private func handleToolCalls(_ toolCalls: [ToolCall]) async {
