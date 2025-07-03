@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MarkdownUI
+import UniformTypeIdentifiers
 
 
 struct ChatWindow: View {
@@ -124,6 +125,7 @@ struct ChatWindow: View {
                 .font(.system(size: 15))
                 .focusable()
                 .focused($isCollapsedInputFocused)
+                .focusEffectDisabled()
                 .onSubmit {
                     let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
                     if hasContent {
@@ -180,6 +182,7 @@ struct ChatWindow: View {
             .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
         }
         .focusable()
+        .focusEffectDisabled()
         .onKeyPress { press in
             if press.key == .init("v") && press.modifiers.contains(.command) {
                 vm.handlePaste()
@@ -255,6 +258,7 @@ struct ChatWindow: View {
         // 简化阴影以提高性能
         .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
         .focusable()
+        .focusEffectDisabled()
         .onKeyPress { press in
             if press.key == .init("v") && press.modifiers.contains(.command) {
                 vm.handlePaste()
