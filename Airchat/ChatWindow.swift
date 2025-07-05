@@ -772,24 +772,28 @@ struct ChatWindow: View {
         }
     }
     
-    // 中间输入框 - 用于新设计
+    // 中间输入框 - 用于新设计 (修复占位符重叠问题)
     private var enhancedCenterInputField: some View {
-        ZStack {
-            if vm.composing.isEmpty && !isInputFocused {
+        ZStack(alignment: .leading) {
+            // 🔧 修复占位符显示逻辑，确保不与用户输入重叠
+            // 只有在完全无内容且未聚焦时才显示占位符
+            if vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isInputFocused {
                 Text("询问任何问题")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
+                    .allowsHitTesting(false) // 防止占位符阻挡点击
+                    .transition(.opacity.animation(.easeInOut(duration: 0.15)))
             }
-            
+
             TextField("", text: $vm.composing, axis: .vertical)
                 .font(.system(size: 14))
                 .textFieldStyle(.plain)
                 .lineLimit(1...3)
-                .onTapGesture {
-                    isInputFocused = true
-                }
+                .focused($isInputFocused) // 🔧 使用@FocusState绑定
+                .opacity(vm.composing.isEmpty && !isInputFocused ? 0.01 : 1.0) // 🔧 防止透明TextField阻挡占位符
                 .onChange(of: vm.composing) { oldValue, newValue in
-                    if !newValue.isEmpty {
+                    // 🔧 改进焦点管理：有内容时保持聚焦
+                    if !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isInputFocused {
                         isInputFocused = true
                     }
                 }
@@ -800,6 +804,11 @@ struct ChatWindow: View {
                 }
         }
         .frame(minWidth: 120)
+        .contentShape(Rectangle()) // 🔧 确保整个区域可点击
+        .onTapGesture {
+            // 🔧 点击时聚焦输入框
+            isInputFocused = true
+        }
     }
     
     // 紧凑发送按钮 - 用于新设计
