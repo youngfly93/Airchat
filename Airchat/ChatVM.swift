@@ -320,12 +320,7 @@ final class ChatVM: NSObject, ObservableObject {
                 audioEngine.stop()
             }
             // 安全地移除tap
-            do {
-                audioEngine.inputNode.removeTap(onBus: 0)
-            } catch {
-                // 忽略移除tap时的错误
-                print("⚠️ 移除音频tap时出错（忽略）: \(error)")
-            }
+            audioEngine.inputNode.removeTap(onBus: 0)
         }
         
         // 结束识别请求

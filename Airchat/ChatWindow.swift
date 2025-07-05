@@ -119,10 +119,11 @@ struct ChatWindow: View {
             
             Spacer()
             
-            // 中间输入框
-            TextField("询问任何问题…", text: $vm.composing)
+            // 中间输入框 - 支持多行文本
+            TextField("询问任何问题…", text: $vm.composing, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: 15))
+                .lineLimit(1...3) // 🔧 添加行数限制，允许多行显示
                 .focusable()
                 .focused($isCollapsedInputFocused)
                 .focusEffectDisabled()
@@ -178,7 +179,8 @@ struct ChatWindow: View {
             }
             .padding(.trailing, 16)
             }
-            .frame(width: 480, height: 64)
+            .frame(width: 480) // 🔧 设置固定宽度
+            .frame(minHeight: 64) // 🔧 设置最小高度，允许根据内容动态调整
             .background(.regularMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
             .overlay(
@@ -255,7 +257,8 @@ struct ChatWindow: View {
             Divider()
             inputView
         }
-        .frame(width: 360, height: 520)
+        .frame(width: 360)
+        .frame(minHeight: 520, maxHeight: 550) // 🔧 降低最大高度，保持更紧凑的界面
         .background(
             AnimationCompatibleVisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
         )
@@ -551,7 +554,7 @@ struct ChatWindow: View {
             }
             .padding(.trailing, 16)
         }
-        .frame(height: 50)
+        .frame(minHeight: 50, maxHeight: 80) // 🔧 降低最大高度，保持更紧凑的界面
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
         .overlay(
@@ -781,7 +784,7 @@ struct ChatWindow: View {
             placeholderText
             inputTextEditor
         }
-        .frame(height: 42)
+        .frame(minHeight: 42, maxHeight: 100) // 🔧 设置合理的高度范围
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
         .overlay(inputBorder)
@@ -790,7 +793,7 @@ struct ChatWindow: View {
         }
     }
     
-    // 中间输入框 - 用于新设计 (修复占位符重叠问题)
+    // 中间输入框 - 用于新设计 (修复占位符重叠问题和文本覆盖问题)
     private var enhancedCenterInputField: some View {
         ZStack(alignment: .leading) {
             // 🔧 修复占位符显示逻辑，确保不与用户输入重叠
@@ -806,7 +809,7 @@ struct ChatWindow: View {
             TextField("", text: $vm.composing, axis: .vertical)
                 .font(.system(size: 14))
                 .textFieldStyle(.plain)
-                .lineLimit(1...3)
+                .lineLimit(1...8) // 🔧 增加最大行数限制，允许更多文本显示
                 .focused($isInputFocused) // 🔧 使用@FocusState绑定
                 .opacity(vm.composing.isEmpty && !isInputFocused ? 0.01 : 1.0) // 🔧 防止透明TextField阻挡占位符
                 .onChange(of: vm.composing) { oldValue, newValue in
@@ -868,7 +871,7 @@ struct ChatWindow: View {
             .textFieldStyle(.plain)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .lineLimit(1...4)
+            .lineLimit(1...8) // 🔧 增加最大行数限制，允许更多文本显示
             .onTapGesture {
                 isInputFocused = true
             }

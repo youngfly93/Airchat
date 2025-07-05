@@ -114,7 +114,7 @@ struct ChineseInputTextFieldModifier: ViewModifier {
             placeholder: placeholder,
             onSubmit: onSubmit
         )
-        .frame(minHeight: 20, maxHeight: 80)
+        .frame(minHeight: 20, maxHeight: 120) // 🔧 增加最大高度，允许显示更多文本
     }
 }
 
