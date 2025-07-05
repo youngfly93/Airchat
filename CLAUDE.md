@@ -14,12 +14,19 @@ The application follows a SwiftUI + MVVM architecture:
 - **AirchatApp.swift**: Main app entry point with NSApplicationDelegateAdaptor, manages status bar item and floating NSPanel window, includes global keyboard shortcuts support
 - **ChatWindow.swift**: SwiftUI chat interface with collapsible/expandable states, glass morphism design
 - **ChatVM.swift**: ViewModel managing chat state, message history, and API interactions
-- **ArkChatAPI.swift**: API client implementing streaming responses via Server-Sent Events (note: filename reflects legacy ARK API, but now uses Gemini)
-- **KeychainHelper.swift**: Generic keychain wrapper for secure API key storage
+- **ArkChatAPI.swift**: Legacy API client for OpenRouter/Gemini integration via Server-Sent Events
+- **GeminiOfficialAPI.swift**: Direct Google Gemini API client with thinking mode support
+- **KeychainHelper.swift**: Generic keychain wrapper for secure API key storage (both OpenRouter and Google API keys)
 - **VisualEffectView.swift**: NSViewRepresentable wrapper for macOS visual effects
-- **Item.swift**: Contains ChatMessage model (note: filename is misleading)
+- **Item.swift**: Contains ChatMessage model and related data structures
 - **WindowManager.swift**: Singleton manager for controlling window visibility and state
 - **KeyboardShortcuts.swift**: Global keyboard shortcuts configuration using KeyboardShortcuts library
+- **ModelConfig.swift**: Configuration for AI model selection and settings
+- **WebSearchService.swift**: Service for handling web search functionality
+- **ThinkingProcessView.swift**: UI component for displaying AI thinking processes
+- **CollapsibleThinkingView.swift**: Collapsible view for thinking content
+- **PasteHandler.swift**: Clipboard and paste functionality handlers
+- **ImagePickerView.swift**: Image selection and attachment interface
 
 ### Key Architectural Patterns
 - Status bar application (no dock icon) using NSStatusBar
@@ -29,6 +36,12 @@ The application follows a SwiftUI + MVVM architecture:
 - Secure credential storage using Keychain Services
 - Global keyboard shortcuts using KeyboardShortcuts library (default: ⌥ + Space)
 - Singleton WindowManager pattern for window state control
+- Dual API support: OpenRouter proxy and direct Google Gemini API
+- Advanced animation system with performance monitoring
+- Collapsible input interface (480x64) and expanded chat view (360x520)
+- Multi-modal content support (text and images)
+- Web search integration for enhanced AI responses
+- Thinking mode visualization for AI reasoning processes
 
 ## Development Commands
 
@@ -56,17 +69,37 @@ xcodebuild -project Airchat.xcodeproj -scheme Airchat clean
 
 ## API Integration Details
 
-### Gemini API Configuration
+### Dual API Support
+The app supports two API configurations:
+
+#### OpenRouter (Legacy via ArkChatAPI)
 - **Endpoint**: https://openrouter.ai/api/v1/chat/completions
-- **Model**: google/gemini-2.5-pro
-- **Authentication**: Bearer token stored in Keychain
-- **Response Format**: Server-Sent Events (SSE) for streaming via OpenRouter
+- **Models**: google/gemini-2.5-pro, claude-3.5-sonnet, gpt-4o, o4-mini-high, llama-3.3-70b
+- **Authentication**: Bearer token stored in Keychain (key: "ark_api_key")
+- **Response Format**: Server-Sent Events (SSE) for streaming
+
+#### Google Gemini Direct API (via GeminiOfficialAPI)
+- **Endpoint**: https://generativelanguage.googleapis.com/v1beta/models
+- **Models**: gemini-2.5-pro, gemini-2.0-flash-thinking-exp, minimax-01
+- **Authentication**: Google API key stored in Keychain (key: "google_api_key")
+- **Features**: Thinking mode, multi-modal support, advanced reasoning
+
+### Available Models (ModelConfig.swift)
+- Google Gemini 2.5 Pro (both proxy and direct)
+- Google Gemini 2.0 Flash Thinking
+- MiniMax M1
+- Claude 3.5 Sonnet
+- OpenAI O4 Mini High
+- GPT-4o
+- Llama 3.3 70B Versatile
 
 ### API Response Handling
 - Uses URLSession with streaming support
 - Parses SSE format with "data:" prefixed lines
 - Handles partial JSON chunks and token accumulation
+- Supports thinking mode content extraction
 - Implements proper error handling for network failures
+- Multi-modal content support for text and images
 
 ## Window Management
 
@@ -74,24 +107,35 @@ The floating window implementation uses several advanced techniques:
 - NSPanel with `.floating` level for always-on-top behavior
 - Custom window mask creation for rounded corners
 - Automatic positioning below status bar item
-- Smooth animations between collapsed (60x60) and expanded (360x520) states
+- Smooth animations between collapsed (480x64) and expanded (360x520) states
+- Performance-optimized animation system with 60fps Timer-based updates
+- Easing functions for natural motion (easeInOutCubic)
+- Animation performance monitoring and frame rate tracking
 - Glass morphism effects using NSVisualEffectView
 
 ## State Management
 
 The app uses a centralized ChatVM for state:
 - `messages`: Array of ChatMessage objects
-- `currentInput`: User's input text
+- `composing`: User's input text
+- `selectedImages`: Array of attached images
 - `isLoading`: Loading state during API calls
-- `isCollapsed`: Window collapse state
-- Methods for sending messages, clearing chat, and toggling window state
+- `showModelSelection`: Model picker visibility
+- `isWebSearchEnabled`: Web search toggle state
+- `shouldScrollToBottom`: Scroll management for streaming content
+- Methods for sending messages, clearing chat, image handling, and API switching
+- Dual scroll mechanism for streaming vs. normal content
+- Typewriter effect system for gradual text display
 
 ## Security Considerations
 
-- API keys are stored in Keychain (service: "com.afei.airchat", account: "ark_api_key")
+- API keys are stored in Keychain (service: "com.afei.airchat")
+  - OpenRouter key: account "ark_api_key"
+  - Google API key: account "google_api_key"
 - App Sandbox enabled with network client capability only
 - Hardened Runtime enabled for notarization
-- Note: Remove hardcoded fallback API key in KeychainHelper.swift before production (currently contains OpenRouter key for Gemini access)
+- Secure image handling with base64 encoding for API transmission
+- No sensitive data logged or exposed in error messages
 
 ## Testing
 
@@ -99,17 +143,31 @@ The project uses Swift Testing framework (Xcode 16+):
 - Test files exist but need implementation
 - Run tests with: `⌘U` in Xcode or command line build
 
+## Project Requirements
+
+- **Platform**: macOS 14.0+
+- **Xcode**: 16.0+
+- **Swift**: 6.0
+- **Architecture**: Universal (arm64 + x86_64)
+
 ## Common Development Tasks
 
 ### Adding New Features
-1. UI changes go in ChatWindow.swift
+1. UI changes go in ChatWindow.swift (main interface) or create new view components
 2. State/logic changes go in ChatVM.swift
-3. API modifications go in ArkChatAPI.swift
+3. OpenRouter API modifications go in ArkChatAPI.swift
+4. Google API modifications go in GeminiOfficialAPI.swift
+5. Model configuration changes go in ModelConfig.swift
+6. Animation improvements go in AppDelegate (animation system)
+7. New thinking/reasoning UI in ThinkingProcessView.swift
 
 ### Debugging Streaming Responses
 - Check console output for SSE parsing
-- Verify API key is correctly stored/retrieved
+- Verify API keys are correctly stored/retrieved from Keychain
 - Monitor network traffic in Xcode's Network instrument
+- Use AnimationPerformanceMonitor for performance debugging
+- Check thinking mode parsing for Gemini API responses
+- Debug image base64 encoding for multi-modal requests
 
 ### Window Positioning Issues
 - Window position is calculated in AirchatApp.swift
@@ -120,10 +178,19 @@ The project uses Swift Testing framework (Xcode 16+):
 
 The app implements global keyboard shortcuts using the KeyboardShortcuts library:
 
-### Dependencies
-- **KeyboardShortcuts**: External Swift Package from sindresorhus/KeyboardShortcuts
-- **Repository**: https://github.com/sindresorhus/KeyboardShortcuts
-- **Version**: 2.3.0+
+### Swift Package Dependencies
+- **KeyboardShortcuts**: Global keyboard shortcuts management
+  - Repository: https://github.com/sindresorhus/KeyboardShortcuts
+  - Version: 2.3.0+
+- **MarkdownUI**: Markdown rendering for chat messages
+  - Repository: https://github.com/gonzalezreal/swift-markdown-ui
+  - Version: 2.4.1
+  - Used for formatting AI responses with rich text
+- **NetworkImage**: Image loading and caching
+  - Repository: https://github.com/gonzalezreal/NetworkImage
+  - Version: 6.0.1
+- **swift-cmark**: CommonMark parser (dependency)
+  - Version: 0.6.0
 
 ### Implementation Details
 - **Default Shortcut**: ⌥ + Space (Option + Space)

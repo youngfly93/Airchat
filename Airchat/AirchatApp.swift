@@ -132,7 +132,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Set up the button
         if let button = statusItem.button {
             if let image = NSImage(named: "MenuIcon") {
-                image.size = NSSize(width: 20, height: 20)
+                // 增大菜单栏图标尺寸，从 20x20 改为 30x30
+                image.size = NSSize(width: 30, height: 30)
                 // 不设置为 template，保持原始颜色
                 button.image = image
             } else {

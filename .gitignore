@@ -100,3 +100,17 @@ gemini_api.txt
 
 # Build products
 *.app
+
+# Project specific temporary files
+build_output/
+*.backup
+*.sh
+*.py
+logo_*.png
+AppIcon.iconset/
+AppIcon_Fixed.icns
+MenuIcon_Fixed.png
+ICON_UPDATE_SUMMARY.md
+
+# Claude settings
+.claude/settings.local.json

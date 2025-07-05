@@ -298,17 +298,17 @@ struct ChatWindow: View {
                 // 重新构建的折叠按钮
                 collapseButton
                 
-                // Logo图标 - 更大尺寸
+                // Logo图标 - 与菜单栏图标尺寸保持一致
                 if let logoImage = NSImage(named: "MenuIcon") {
                     Image(nsImage: logoImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)  // 从 28x28 增大到 32x32
                         .foregroundStyle(.primary)
                 } else {
                     // 备用图标
                     Image(systemName: "bubble.left.and.bubble.right.fill")
-                        .font(.system(size: 20, weight: .medium))
+                        .font(.system(size: 22, weight: .medium))  // 从 20 增大到 22
                         .foregroundColor(.primary)
                 }
             }
