@@ -139,6 +139,13 @@ final class GeminiOfficialAPI {
                                 parts.append(GeminiRequest.Part(text: nil, inlineData: inlineData))
                             }
                         }
+                    case .audioData(let base64Data, let mimeType):
+                        // 直接使用音频数据
+                        let inlineData = GeminiRequest.Part.InlineData(
+                            mimeType: mimeType,
+                            data: base64Data
+                        )
+                        parts.append(GeminiRequest.Part(text: nil, inlineData: inlineData))
                     }
                 }
             }

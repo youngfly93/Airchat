@@ -86,15 +86,16 @@ enum MessageContent: Codable {
 enum ContentPart: Codable {
     case text(String)
     case imageUrl(AttachedImage)
-    
+    case audioData(String, mimeType: String) // base64 audio data with mime type
+
     enum CodingKeys: String, CodingKey {
-        case type, text, image_url
+        case type, text, image_url, audio_data, mime_type
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .type)
-        
+
         switch type {
         case "text":
             let text = try container.decode(String.self, forKey: .text)
@@ -102,14 +103,18 @@ enum ContentPart: Codable {
         case "image_url":
             let imageUrl = try container.decode(AttachedImage.self, forKey: .image_url)
             self = .imageUrl(imageUrl)
+        case "audio_data":
+            let audioData = try container.decode(String.self, forKey: .audio_data)
+            let mimeType = try container.decode(String.self, forKey: .mime_type)
+            self = .audioData(audioData, mimeType: mimeType)
         default:
             throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "Unknown content type")
         }
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+
         switch self {
         case .text(let text):
             try container.encode("text", forKey: .type)
@@ -117,6 +122,10 @@ enum ContentPart: Codable {
         case .imageUrl(let imageUrl):
             try container.encode("image_url", forKey: .type)
             try container.encode(imageUrl, forKey: .image_url)
+        case .audioData(let audioData, let mimeType):
+            try container.encode("audio_data", forKey: .type)
+            try container.encode(audioData, forKey: .audio_data)
+            try container.encode(mimeType, forKey: .mime_type)
         }
     }
 }

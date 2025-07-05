@@ -8,9 +8,10 @@
 import Foundation
 import SwiftUI
 import Combine
+import AVFoundation
 
 @MainActor
-final class ChatVM: ObservableObject {
+final class ChatVM: NSObject, ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var composing = ""
     @Published var selectedImages: [AttachedImage] = []
@@ -23,6 +24,14 @@ final class ChatVM: ObservableObject {
     @Published var showAPIKeyInput = false
     @Published var showClearConfirmation = false
     @Published var isWebSearchEnabled = false // 联网搜索开关状态
+
+    // 语音转文本相关
+    @Published var isRecording = false
+    @Published var isProcessingVoice = false
+
+    // 音频录制相关
+    private var audioRecorder: AVAudioRecorder?
+    private var recordingURL: URL?
     
     private let api = ArkChatAPI()
     private let geminiAPI = GeminiOfficialAPI()
@@ -63,7 +72,7 @@ final class ChatVM: ObservableObject {
     
     // 移除了滚动节流，打字机模式需要实时跟随
     
-    init() {
+    override init() {
         // 初始化系统消息，包含当前日期
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "zh_CN")
@@ -79,6 +88,61 @@ final class ChatVM: ObservableObject {
         """
         
         messages = [ChatMessage(role: .system, content: systemMessage)]
+    }
+
+    // MARK: - 音频录制功能
+
+    // 语音录制控制方法
+    func toggleVoiceRecording() {
+        if isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
+    }
+
+    private func startRecording() {
+        // 在macOS上直接开始录音，权限会在系统层面处理
+        beginRecording()
+    }
+
+    private func beginRecording() {
+        // 创建录音文件URL
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let audioFilename = documentsPath.appendingPathComponent("recording_\(Date().timeIntervalSince1970).m4a")
+        recordingURL = audioFilename
+
+        // 设置录音参数
+        let settings = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+
+        do {
+            audioRecorder = try AVAudioRecorder(url: audioFilename, settings: settings)
+            audioRecorder?.record()
+
+            isRecording = true
+            print("🎤 开始录音: \(audioFilename.lastPathComponent)")
+        } catch {
+            print("❌ 录音失败: \(error)")
+        }
+    }
+
+    private func stopRecording() {
+        audioRecorder?.stop()
+        isRecording = false
+        isProcessingVoice = true
+        print("🎤 停止录音")
+
+        // 开始处理音频
+        if let url = recordingURL {
+            Task {
+                await processAudioFile(url)
+            }
+        }
     }
     
     func send() {
@@ -688,45 +752,47 @@ final class ChatVM: ObservableObject {
             print("File selection failed: \(error)")
         }
     }
-    
+
+    // MARK: - 图片处理辅助方法
+
     private func addImageWithAnimation(_ image: AttachedImage) {
         selectedImages.append(image)
         animatingImageIDs.insert(image.id)
-        
+
         // Remove from animation set after delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             self.animatingImageIDs.remove(image.id)
         }
     }
-    
+
     private func compressImageData(_ data: Data, maxSize: Int) -> Data {
         guard let nsImage = NSImage(data: data) else { return data }
-        
+
         // If already small enough, return original
         if data.count <= maxSize {
             return data
         }
-        
+
         // Calculate compression quality
         let compressionRatio = Double(maxSize) / Double(data.count)
         let quality = min(max(compressionRatio, 0.1), 0.9) // Between 0.1 and 0.9
-        
+
         // Create bitmap representation
         if let tiffData = nsImage.tiffRepresentation,
            let bitmap = NSBitmapImageRep(data: tiffData) {
-            
+
             let properties: [NSBitmapImageRep.PropertyKey: Any] = [
                 .compressionFactor: quality
             ]
-            
+
             if let compressedData = bitmap.representation(using: .jpeg, properties: properties) {
                 return compressedData
             }
         }
-        
+
         return data
     }
-    
+
     private func getMimeType(from url: URL) -> String {
         let pathExtension = url.pathExtension.lowercased()
         switch pathExtension {
@@ -742,9 +808,141 @@ final class ChatVM: ObservableObject {
             return "image/jpeg" // Default fallback
         }
     }
-    
+
+    // MARK: - 音频处理
+
+    private func processAudioFile(_ url: URL) async {
+        print("🎤 开始处理音频文件: \(url.lastPathComponent)")
+
+        do {
+            // 使用内置的语音转文字功能
+            let transcription = try await transcribeAudio(from: url)
+
+            // 将转录结果添加到输入框
+            if composing.isEmpty {
+                composing = transcription
+            } else {
+                composing += " " + transcription
+            }
+
+            print("🎤 语音转录完成: \(transcription)")
+
+        } catch {
+            print("❌ 语音转录失败: \(error.localizedDescription)")
+
+            // 显示错误信息
+            if composing.isEmpty {
+                composing = "语音转录失败，请重试"
+            }
+        }
+
+        // 清理状态和临时文件
+        isProcessingVoice = false
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    // MARK: - 语音转文字功能
+
+    private func transcribeAudio(from audioURL: URL) async throws -> String {
+        // 获取Google API密钥
+        guard let apiKey = KeychainHelper.shared.googleApiKey, !apiKey.isEmpty else {
+            throw TranscriptionError.missingAPIKey
+        }
+
+        print("🎤 开始真实的语音转录...")
+
+        // 读取音频文件数据
+        let audioData = try Data(contentsOf: audioURL)
+        let base64Audio = audioData.base64EncodedString()
+
+        // 构建Gemini API请求
+        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=\(apiKey)")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // 构建请求体
+        let requestBody: [String: Any] = [
+            "contents": [
+                [
+                    "parts": [
+                        [
+                            "text": "请将这段音频转录为文字，只返回转录的文字内容，不要添加任何解释或格式："
+                        ],
+                        [
+                            "inline_data": [
+                                "mime_type": "audio/mp4",
+                                "data": base64Audio
+                            ]
+                        ]
+                    ]
+                ]
+            ],
+            "generationConfig": [
+                "temperature": 0.1,
+                "maxOutputTokens": 1000
+            ]
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        // 发送请求
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        // 检查HTTP响应
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw TranscriptionError.transcriptionFailed("无效的响应")
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
+            print("❌ API错误 (\(httpResponse.statusCode)): \(errorMessage)")
+            throw TranscriptionError.transcriptionFailed("API错误: \(httpResponse.statusCode)")
+        }
+
+        // 解析响应
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let candidates = json["candidates"] as? [[String: Any]],
+              let firstCandidate = candidates.first,
+              let content = firstCandidate["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]],
+              let firstPart = parts.first,
+              let text = firstPart["text"] as? String else {
+
+            let responseString = String(data: data, encoding: .utf8) ?? "无法解析响应"
+            print("❌ 响应解析失败: \(responseString)")
+            throw TranscriptionError.transcriptionFailed("响应解析失败")
+        }
+
+        let transcription = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        print("🎤 转录成功: \(transcription)")
+
+        return transcription
+    }
+
     deinit {
         scrollUpdateTimer?.invalidate()
         typewriterTimer?.invalidate()
     }
 }
+
+// MARK: - 语音转录错误类型
+
+enum TranscriptionError: LocalizedError {
+    case missingAPIKey
+    case audioFileNotFound
+    case transcriptionFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingAPIKey:
+            return "缺少Gemini API密钥"
+        case .audioFileNotFound:
+            return "音频文件未找到"
+        case .transcriptionFailed(let message):
+            return "转录失败: \(message)"
+        }
+    }
+}
+

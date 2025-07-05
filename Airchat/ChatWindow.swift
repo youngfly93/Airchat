@@ -141,11 +141,15 @@ struct ChatWindow: View {
             
             // 右侧按钮组
             HStack(spacing: 12) {
-                // 麦克风按钮
-                Button(action: {}) {
-                    Image(systemName: "mic")
+                // 麦克风按钮 - 语音转文本
+                Button(action: {
+                    vm.toggleVoiceRecording()
+                }) {
+                    Image(systemName: vm.isRecording ? "mic.fill" : "mic")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(vm.isRecording ? .red : .secondary)
+                        .scaleEffect(vm.isRecording ? 1.2 : 1.0)
+                        .animation(.easeInOut(duration: 0.2), value: vm.isRecording)
                 }
                 .buttonStyle(.plain)
                 
@@ -520,11 +524,15 @@ struct ChatWindow: View {
             
             // 右侧按钮组
             HStack(spacing: 12) {
-                // 麦克风按钮 (暂时不实现功能)
-                Button(action: {}) {
-                    Image(systemName: "mic")
+                // 麦克风按钮 - 语音转文本
+                Button(action: {
+                    vm.toggleVoiceRecording()
+                }) {
+                    Image(systemName: vm.isRecording ? "mic.fill" : "mic")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(vm.isRecording ? .red : .secondary)
+                        .scaleEffect(vm.isRecording ? 1.2 : 1.0)
+                        .animation(.easeInOut(duration: 0.2), value: vm.isRecording)
                 }
                 .buttonStyle(.plain)
                 
