@@ -391,17 +391,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             stopAnimation()
             return
         }
-        
+
         // 记录帧性能
         AnimationPerformanceMonitor.shared.recordFrame()
-        
+
         let currentTime = CACurrentMediaTime()
         let elapsed = currentTime - animationStartTime
         let progress = min(elapsed / animationDuration, 1.0)
-        
+
         // 使用优化的缓动函数
         let easedProgress = easeInOutCubic(progress)
-        
+
         // 计算插值frame
         let currentFrame = NSRect(
             x: lerp(startFrame.origin.x, targetFrame.origin.x, easedProgress),
@@ -409,14 +409,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             width: lerp(startFrame.width, targetFrame.width, easedProgress),
             height: lerp(startFrame.height, targetFrame.height, easedProgress)
         )
-        
+
         // 设置frame并保持视觉效果
         panel.setFrame(currentFrame, display: true, animate: false)
-        
+
+        // 🔧 关键修复：动画过程中实时更新遮罩
+        updateWindowMaskForCurrentFrame(currentFrame)
+
         // 动画完成
         if progress >= 1.0 {
             stopAnimation()
-            // 最后更新mask
+            // 最后确保遮罩正确
             updateWindowMaskForCurrentState()
         }
     }
@@ -565,38 +568,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Update mask based on current window size
     private func updateWindowMaskForCurrentState() {
         guard let panel = panel else { return }
-        
-        let currentFrame = panel.frame
-        
+        updateWindowMaskForCurrentFrame(panel.frame)
+    }
+
+    // 🔧 新增：根据当前frame实时更新遮罩
+    private func updateWindowMaskForCurrentFrame(_ currentFrame: NSRect) {
         // Determine if collapsed based on window size
         // Collapsed: 480x64, Expanded: 360x520
-        let isCollapsed = currentFrame.width >= 480 // 输入框模式更宽
-        let cornerRadius: CGFloat = isCollapsed ? 32 : 20
-        
+
+        // 动态计算圆角半径，在动画过程中平滑过渡
+        let collapsedRadius: CGFloat = 32
+        let expandedRadius: CGFloat = 20
+
+        let cornerRadius: CGFloat
+        if currentFrame.width >= 480 {
+            // 折叠状态或接近折叠状态
+            cornerRadius = collapsedRadius
+        } else if currentFrame.width <= 360 {
+            // 展开状态或接近展开状态
+            cornerRadius = expandedRadius
+        } else {
+            // 动画过程中，根据宽度插值计算圆角
+            let progress = (currentFrame.width - 360) / (480 - 360)
+            cornerRadius = expandedRadius + (collapsedRadius - expandedRadius) * progress
+        }
+
         applyWindowMask(cornerRadius: cornerRadius)
     }
     
-    // 简化的窗口mask应用
+    // 优化的窗口mask应用 - 减少重建频率
     private func applyWindowMask(cornerRadius: CGFloat = 20) {
         guard let panel = panel, let contentView = panel.contentView else { return }
-        
-        DispatchQueue.main.async {
-            // 只有在需要时才启用layer
-            if !contentView.wantsLayer {
-                contentView.wantsLayer = true
-            }
-            
-            let windowFrame = contentView.bounds
-            guard windowFrame.width > 0 && windowFrame.height > 0 else { return }
-            
-            // 创建简单的rounded rect mask
+
+        // 只有在需要时才启用layer
+        if !contentView.wantsLayer {
+            contentView.wantsLayer = true
+        }
+
+        let windowFrame = contentView.bounds
+        guard windowFrame.width > 0 && windowFrame.height > 0 else { return }
+
+        // 🔧 优化：复用现有的mask layer，只更新path
+        if let layer = contentView.layer {
             let path = NSBezierPath(roundedRect: windowFrame, xRadius: cornerRadius, yRadius: cornerRadius)
-            let shapeLayer = CAShapeLayer()
-            shapeLayer.path = path.cgPath
-            shapeLayer.fillRule = .evenOdd
-            
-            // 确保layer设置正确
-            if let layer = contentView.layer {
+
+            if let existingMask = layer.mask as? CAShapeLayer {
+                // 复用现有的mask layer，只更新path
+                existingMask.path = path.cgPath
+            } else {
+                // 首次创建mask layer
+                let shapeLayer = CAShapeLayer()
+                shapeLayer.path = path.cgPath
+                shapeLayer.fillRule = .evenOdd
+
                 layer.mask = shapeLayer
                 layer.masksToBounds = true
                 layer.backgroundColor = NSColor.clear.cgColor
