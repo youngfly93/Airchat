@@ -329,10 +329,10 @@ struct ChatWindow: View {
                             .lineLimit(1)
                     }
                     .foregroundColor(.primary)
+                    .padding(.horizontal, 8)
+                    .frame(height: 32)
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
                 .background(.regularMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(
@@ -415,8 +415,8 @@ struct ChatWindow: View {
             .background(Color.clear) // 确保背景透明
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: vm.messages.count) {
-                // 新增消息时滚动到底部，使用动画
-                withAnimation(.easeOut(duration: 0.3)) {
+                // 新增消息时滚动到底部，使用优化的动画
+                withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
                     proxy.scrollTo("BOTTOM", anchor: .bottom)
                 }
             }
@@ -425,8 +425,8 @@ struct ChatWindow: View {
                 proxy.scrollTo("BOTTOM", anchor: .bottom)
             }
             .onReceive(vm.normalScrollPublisher) { _ in
-                // 普通情况下的滚动，带轻微动画
-                withAnimation(.easeOut(duration: 0.2)) {
+                // 普通情况下的滚动，使用更快速的动画
+                withAnimation(.interpolatingSpring(stiffness: 400, damping: 25)) {
                     proxy.scrollTo("BOTTOM", anchor: .bottom)
                 }
             }

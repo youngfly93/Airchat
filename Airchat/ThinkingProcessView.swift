@@ -48,32 +48,15 @@ struct ThinkingProcessView: View {
     ]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // 标题和计时器
+        VStack(alignment: .leading, spacing: 8) {
+            // 优化的标题栏
             headerView
-            
-            // 思考过程滚动区域
+
+            // 优化的思考过程滚动区域
             thinkingScrollView
         }
-        .padding(12)
-        .background(
-            // 深色背景以提高对比度
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            darkBlue.opacity(0.95),
-                            contrastBlue.opacity(0.9)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(contrastBlue.opacity(0.4), lineWidth: 1)
-                )
-        )
+        .padding(10)
+        .background(optimizedBackground)
         .onAppear {
             startThinking()
         }
@@ -93,45 +76,37 @@ struct ThinkingProcessView: View {
             }
         }
     }
-    
-    // MARK: - Header View
+
+    // MARK: - Optimized UI Components
     private var headerView: some View {
-        HStack(spacing: 8) {
-            // 思考图标（带动画）
+        HStack(spacing: 6) {
             Image(systemName: "brain.head.profile")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.white)
-                .scaleEffect(isCompleted ? 1.0 : 1.2)
+                .scaleEffect(isCompleted ? 1.0 : 1.1)
                 .animation(
-                    isCompleted ? .none : .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
+                    isCompleted ? .none : .easeInOut(duration: 1.5).repeatForever(autoreverses: true),
                     value: isCompleted
                 )
-            
-            // 计时器文本
-            Text(isCompleted ? "思考完成" : "思考中 \(elapsedTime)s")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(isCompleted ? .white.opacity(0.8) : .white)
-            
+
+            Text(isCompleted ? "思考完成" : "思考中...")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.9))
+
             Spacer()
-            
-            // 状态指示器
+
             if !isCompleted {
                 ProgressView()
-                    .scaleEffect(0.7)
+                    .scaleEffect(0.6)
                     .progressViewStyle(CircularProgressViewStyle(tint: .white.opacity(0.8)))
-            } else {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.9))
             }
         }
     }
-    
-    // MARK: - Thinking Scroll View
+
     private var thinkingScrollView: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: 10) {
+                LazyVStack(alignment: .leading, spacing: 6) {
                     ForEach(displayedThoughts) { thought in
                         thoughtBubble(thought)
                             .id(thought.id)
@@ -140,67 +115,86 @@ struct ThinkingProcessView: View {
                                 removal: .opacity
                             ))
                     }
-                    
+
                     // 底部哨兵，确保滚动到最新内容
                     Color.clear
                         .frame(height: 1)
                         .id("bottom")
                 }
-                .padding(.vertical, 8)
+                .padding(.vertical, 4)
             }
-            .frame(maxHeight: 120) // 限制最大高度，更矮以增强滚动感
-            .mask(
-                // 渐变遮罩，增强朦胧感
-                LinearGradient(
-                    gradient: Gradient(stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .black, location: 0.1),
-                        .init(color: .black, location: 0.9),
-                        .init(color: .clear, location: 1)
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .frame(maxHeight: 120)
+            .mask(optimizedGradientMask)
             .onChange(of: displayedThoughts.count) { _, _ in
-                // 每当有新的思考内容添加时，自动滚动到底部
-                withAnimation(.easeOut(duration: 0.25)) {
-                    if let lastThought = displayedThoughts.last {
-                        proxy.scrollTo(lastThought.id, anchor: .bottom)
-                    }
+                // 优化滚动动画 - 使用更快速的弹簧动画
+                withAnimation(.interpolatingSpring(stiffness: 400, damping: 25)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
         }
     }
-    
-    // MARK: - Thought Bubble
+
     private func thoughtBubble(_ thought: ThoughtSegment) -> some View {
         let isActive = activeThoughtId == thought.id
-        
-        return HStack(alignment: .top, spacing: 8) {
-            // 思考点图标
+
+        return HStack(alignment: .top, spacing: 5) {
+            // 优化的指示器
             Circle()
-                .fill(isActive ? .white : .white.opacity(0.7))
-                .frame(width: isActive ? 8 : 6, height: isActive ? 8 : 6)
-                .padding(.top, 6)
-                .scaleEffect(isActive ? 1.2 : 1.0)
-                .animation(.easeInOut(duration: 0.3), value: isActive)
-            
-            // 思考文本
+                .fill(.white.opacity(isActive ? 1.0 : 0.7))
+                .frame(width: isActive ? 6 : 4, height: isActive ? 6 : 4)
+                .padding(.top, 4)
+                .animation(.interpolatingSpring(stiffness: 600, damping: 30), value: isActive)
+
+            // 优化的文本渲染
             Text(thought.text)
                 .font(.system(size: 11, weight: isActive ? .medium : .regular))
-                .foregroundColor(isActive ? .white : .white.opacity(0.9))
+                .foregroundColor(.white.opacity(isActive ? 1.0 : 0.9))
                 .multilineTextAlignment(.leading)
-                .lineSpacing(2)
+                .lineSpacing(1)
                 .fixedSize(horizontal: false, vertical: true)
-                .scaleEffect(isActive ? 1.05 : 1.0)
-                .animation(.easeInOut(duration: 0.3), value: isActive)
-            
-            Spacer()
+                .animation(.interpolatingSpring(stiffness: 600, damping: 30), value: isActive)
+
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 2)
+        .padding(.vertical, 1)
     }
-    
+
+    /// 优化的渐变遮罩，减少GPU负担
+    private var optimizedGradientMask: some View {
+        LinearGradient(
+            gradient: Gradient(stops: [
+                .init(color: .clear, location: 0),
+                .init(color: .black, location: 0.2),
+                .init(color: .black, location: 0.8),
+                .init(color: .clear, location: 1)
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    /// 优化的背景渲染
+    private var optimizedBackground: some View {
+        RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .fill(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        darkBlue.opacity(0.95),
+                        contrastBlue.opacity(0.9)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(contrastBlue.opacity(0.3), lineWidth: 0.5)
+            )
+    }
+
+
+
     // MARK: - Thinking Logic
     private func startThinking() {
         guard !isCompleted else { return }
@@ -249,30 +243,31 @@ struct ThinkingProcessView: View {
         addSentencesWithDelay(sentences, index: 0)
     }
     
-    // 递归添加句子，带延迟效果
+    // 递归添加句子，带延迟效果 - 优化版本
     private func addSentencesWithDelay(_ sentences: [String], index: Int) {
         guard index < sentences.count, !sentences[index].isEmpty else { return }
-        
+
         let segment = ThoughtSegment(text: sentences[index])
-        
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+
+        // 使用更快速的弹簧动画，减少阻尼感
+        withAnimation(.interpolatingSpring(stiffness: 400, damping: 20)) {
             displayedThoughts.append(segment)
             // 设置新段落为活跃状态
             activeThoughtId = segment.id
         }
-        
-        // 0.8秒后清除高亮，让它自然消失
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+
+        // 减少高亮持续时间，提高响应速度
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             if activeThoughtId == segment.id {
-                withAnimation(.easeOut(duration: 0.3)) {
+                withAnimation(.easeOut(duration: 0.2)) {
                     activeThoughtId = nil
                 }
             }
         }
-        
-        // 继续处理下一个句子
+
+        // 减少延迟时间，提高流畅度
         if index + 1 < sentences.count {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 addSentencesWithDelay(sentences, index: index + 1)
             }
         }
@@ -298,30 +293,31 @@ struct ThinkingProcessView: View {
     }
     
     private func startDemoMode() {
-        thoughtTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+        thoughtTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in // 加快演示速度
             guard currentThoughtIndex < demoThoughts.count else {
                 completeThinking()
                 return
             }
-            
+
             let thoughtText = demoThoughts[currentThoughtIndex]
             let segment = ThoughtSegment(text: thoughtText)
-            
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+
+            // 使用更快速的弹簧动画
+            withAnimation(.interpolatingSpring(stiffness: 400, damping: 20)) {
                 displayedThoughts.append(segment)
                 // 设置新段落为活跃状态
                 activeThoughtId = segment.id
             }
-            
-            // 0.8秒后清除高亮，让它自然消失
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+
+            // 减少高亮持续时间
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 if activeThoughtId == segment.id {
-                    withAnimation(.easeOut(duration: 0.3)) {
+                    withAnimation(.easeOut(duration: 0.2)) {
                         activeThoughtId = nil
                     }
                 }
             }
-            
+
             currentThoughtIndex += 1
         }
     }
@@ -338,31 +334,32 @@ struct ThinkingProcessView: View {
             return
         }
         
-        // 逐段显示思考内容
-        thoughtTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { _ in
+        // 逐段显示思考内容 - 优化版本
+        thoughtTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in // 加快显示速度
             guard currentThoughtIndex < paragraphs.count else {
                 completeThinking()
                 return
             }
-            
+
             let thoughtText = paragraphs[currentThoughtIndex]
             let segment = ThoughtSegment(text: thoughtText)
-            
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+
+            // 使用更快速的弹簧动画
+            withAnimation(.interpolatingSpring(stiffness: 400, damping: 20)) {
                 displayedThoughts.append(segment)
                 // 设置新段落为活跃状态
                 activeThoughtId = segment.id
             }
-            
-            // 0.8秒后清除高亮，让它自然消失
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+
+            // 减少高亮持续时间
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 if activeThoughtId == segment.id {
-                    withAnimation(.easeOut(duration: 0.3)) {
+                    withAnimation(.easeOut(duration: 0.15)) {
                         activeThoughtId = nil
                     }
                 }
             }
-            
+
             currentThoughtIndex += 1
         }
     }

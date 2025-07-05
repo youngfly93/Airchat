@@ -40,10 +40,10 @@ final class ChatVM: ObservableObject {
         streamingScrollSubject.eraseToAnyPublisher()
     }
     
-    // 普通情况下的防抖滚动
+    // 普通情况下的防抖滚动 - 优化版本
     var normalScrollPublisher: AnyPublisher<Void, Never> {
         normalScrollSubject
-            .throttle(for: .milliseconds(50), scheduler: DispatchQueue.main, latest: true)
+            .throttle(for: .milliseconds(30), scheduler: DispatchQueue.main, latest: true) // 减少防抖时间
             .eraseToAnyPublisher()
     }
     
