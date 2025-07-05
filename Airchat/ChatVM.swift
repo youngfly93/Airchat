@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import Combine
 import AVFoundation
+import Speech
 
 @MainActor
 final class ChatVM: NSObject, ObservableObject {
@@ -28,10 +29,17 @@ final class ChatVM: NSObject, ObservableObject {
     // 语音转文本相关
     @Published var isRecording = false
     @Published var isProcessingVoice = false
+    @Published var speechRecognitionMethod: SpeechRecognitionMethod = .geminiAPI  // 默认使用Gemini API（更稳定）
 
     // 音频录制相关
     private var audioRecorder: AVAudioRecorder?
     private var recordingURL: URL?
+    
+    // Apple Speech Recognition 相关
+    private var speechRecognizer: SFSpeechRecognizer?
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private var audioEngine: AVAudioEngine?
     
     private let api = ArkChatAPI()
     private let geminiAPI = GeminiOfficialAPI()
@@ -100,49 +108,242 @@ final class ChatVM: NSObject, ObservableObject {
             startRecording()
         }
     }
+    
+    // 切换语音识别方法
+    func switchSpeechRecognitionMethod() {
+        // 停止当前录音
+        if isRecording {
+            stopRecording()
+        }
+        
+        speechRecognitionMethod = speechRecognitionMethod == .appleSpeech ? .geminiAPI : .appleSpeech
+        print("🎤 切换语音识别方法为: \(speechRecognitionMethod.displayName)")
+        
+        // 显示切换提示
+        let methodName = speechRecognitionMethod == .appleSpeech ? "Apple语音识别" : "Gemini AI识别"
+        composing = "已切换到\(methodName)"
+        
+        // 2秒后清空提示
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            if self.composing == "已切换到\(methodName)" {
+                self.composing = ""
+            }
+        }
+    }
 
     private func startRecording() {
-        // 在macOS上直接开始录音，权限会在系统层面处理
-        beginRecording()
+        switch speechRecognitionMethod {
+        case .appleSpeech:
+            startAppleSpeechRecognition()
+        case .geminiAPI:
+            beginRecording()  // 使用原有的录音+Gemini API方式
+        }
     }
 
     private func beginRecording() {
         // 创建录音文件URL
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let audioFilename = documentsPath.appendingPathComponent("recording_\(Date().timeIntervalSince1970).m4a")
+        let audioFilename = documentsPath.appendingPathComponent("recording_\(Date().timeIntervalSince1970).wav")
         recordingURL = audioFilename
 
-        // 设置录音参数
-        let settings = [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 44100,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        // 设置录音参数 - 为语音识别优化
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatLinearPCM),  // 使用 WAV 格式，更适合语音识别
+            AVSampleRateKey: 16000,  // 16kHz 是语音识别的标准采样率
+            AVNumberOfChannelsKey: 1,  // 单声道
+            AVLinearPCMBitDepthKey: 16,  // 16位深度
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsFloatKey: false,
+            AVEncoderAudioQualityKey: AVAudioQuality.max.rawValue  // 使用最高质量确保清晰度
         ]
 
         do {
             audioRecorder = try AVAudioRecorder(url: audioFilename, settings: settings)
+            audioRecorder?.isMeteringEnabled = true  // 启用音量监测
             audioRecorder?.record()
 
             isRecording = true
             print("🎤 开始录音: \(audioFilename.lastPathComponent)")
+            print("🎤 录音设置: WAV格式, 16kHz采样率, 16位深度")
         } catch {
             print("❌ 录音失败: \(error)")
         }
     }
 
     private func stopRecording() {
-        audioRecorder?.stop()
-        isRecording = false
-        isProcessingVoice = true
-        print("🎤 停止录音")
+        switch speechRecognitionMethod {
+        case .appleSpeech:
+            stopAppleSpeechRecognition()
+        case .geminiAPI:
+            audioRecorder?.stop()
+            isRecording = false
+            isProcessingVoice = true
+            print("🎤 停止录音")
 
-        // 开始处理音频
-        if let url = recordingURL {
-            Task {
-                await processAudioFile(url)
+            // 开始处理音频
+            if let url = recordingURL {
+                Task {
+                    await processAudioFile(url)
+                }
             }
         }
+    }
+    
+    // MARK: - Apple Speech Recognition
+    
+    private func startAppleSpeechRecognition() {
+        // 检查权限
+        SFSpeechRecognizer.requestAuthorization { [weak self] authStatus in
+            Task { @MainActor in
+                guard let self = self else { return }
+                
+                switch authStatus {
+                case .authorized:
+                    self.beginAppleSpeechRecognition()
+                case .denied, .restricted, .notDetermined:
+                    print("❌ 语音识别权限被拒绝")
+                    self.composing = "语音识别权限被拒绝，请在系统设置中开启"
+                    self.isRecording = false
+                    self.isProcessingVoice = false
+                @unknown default:
+                    print("❌ 未知的权限状态")
+                    self.isRecording = false
+                    self.isProcessingVoice = false
+                }
+            }
+        }
+    }
+    
+    private func beginAppleSpeechRecognition() {
+        // 停止任何现有的识别任务
+        stopAppleSpeechRecognition()
+        
+        // 检查语音识别是否可用
+        var targetRecognizer: SFSpeechRecognizer?
+        
+        // 先尝试中文
+        if let chineseRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN")), chineseRecognizer.isAvailable {
+            targetRecognizer = chineseRecognizer
+            print("🎤 使用中文语音识别")
+        }
+        // 再尝试英文
+        else if let englishRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US")), englishRecognizer.isAvailable {
+            targetRecognizer = englishRecognizer
+            print("🎤 使用英文语音识别")
+        }
+        // 都不可用，切换到Gemini
+        else {
+            print("❌ 语音识别服务不可用，自动切换到Gemini API")
+            speechRecognitionMethod = .geminiAPI
+            beginRecording()
+            return
+        }
+        
+        self.speechRecognizer = targetRecognizer
+        
+        do {
+            // 设置音频引擎
+            audioEngine = AVAudioEngine()
+            guard let audioEngine = audioEngine else { 
+                throw TranscriptionError.speechRecognitionNotAvailable
+            }
+            
+            let inputNode = audioEngine.inputNode
+            
+            // 创建识别请求
+            recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+            guard let recognitionRequest = recognitionRequest else { 
+                throw TranscriptionError.speechRecognitionNotAvailable
+            }
+            
+            recognitionRequest.shouldReportPartialResults = true
+            
+            // 开始识别任务
+            recognitionTask = self.speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+                Task { @MainActor in
+                    guard let self = self else { return }
+                    
+                    if let result = result {
+                        // 实时更新识别结果
+                        self.composing = result.bestTranscription.formattedString
+                        
+                        if result.isFinal {
+                            print("🎤 语音识别完成: \(result.bestTranscription.formattedString)")
+                            self.stopAppleSpeechRecognition()
+                        }
+                    }
+                    
+                    if let error = error {
+                        print("❌ 语音识别错误: \(error)")
+                        self.stopAppleSpeechRecognition()
+                    }
+                }
+            }
+            
+            // 移除现有的tap（如果有的话）
+            inputNode.removeTap(onBus: 0)
+            
+            // 设置音频格式 - 使用安全的格式
+            let recordingFormat = AVAudioFormat(standardFormatWithSampleRate: 16000, channels: 1)
+            guard let format = recordingFormat else {
+                throw TranscriptionError.speechRecognitionNotAvailable
+            }
+            
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak recognitionRequest] buffer, _ in
+                recognitionRequest?.append(buffer)
+            }
+            
+            // 启动音频引擎
+            audioEngine.prepare()
+            try audioEngine.start()
+            
+            isRecording = true
+            isProcessingVoice = false
+            print("🎤 开始Apple语音识别...")
+            
+        } catch {
+            print("❌ 启动语音识别失败: \(error)")
+            composing = "语音识别启动失败，已切换到Gemini API"
+            isRecording = false
+            isProcessingVoice = false
+            
+            // 自动切换到Gemini API
+            speechRecognitionMethod = .geminiAPI
+            beginRecording()
+        }
+    }
+    
+    private func stopAppleSpeechRecognition() {
+        // 安全地停止音频引擎
+        if let audioEngine = audioEngine {
+            if audioEngine.isRunning {
+                audioEngine.stop()
+            }
+            // 安全地移除tap
+            do {
+                audioEngine.inputNode.removeTap(onBus: 0)
+            } catch {
+                // 忽略移除tap时的错误
+                print("⚠️ 移除音频tap时出错（忽略）: \(error)")
+            }
+        }
+        
+        // 结束识别请求
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        
+        // 取消识别任务
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        
+        // 清理音频引擎
+        audioEngine = nil
+        
+        // 清理状态
+        isRecording = false
+        isProcessingVoice = false
+        
+        print("🎤 停止Apple语音识别")
     }
     
     func send() {
@@ -815,6 +1016,21 @@ final class ChatVM: NSObject, ObservableObject {
         print("🎤 开始处理音频文件: \(url.lastPathComponent)")
 
         do {
+            // 检查文件大小
+            let fileAttributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            let fileSize = fileAttributes[.size] as? Int64 ?? 0
+            let maxSize: Int64 = 20 * 1024 * 1024  // 20MB 限制
+            
+            print("🎤 音频文件大小: \(fileSize / 1024) KB")
+            
+            if fileSize > maxSize {
+                print("⚠️ 音频文件过大: \(fileSize / 1024 / 1024) MB，超过 20MB 限制")
+                composing = "录音文件过大，请缩短录音时长"
+                isProcessingVoice = false
+                try? FileManager.default.removeItem(at: url)
+                return
+            }
+
             // 使用内置的语音转文字功能
             let transcription = try await transcribeAudio(from: url)
 
@@ -858,72 +1074,136 @@ final class ChatVM: NSObject, ObservableObject {
         // 构建Gemini API请求
         let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=\(apiKey)")!
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // 重试机制配置
+        let maxRetries = 3
+        var retryCount = 0
+        var lastError: Error?
+        
+        while retryCount < maxRetries {
+            do {
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.timeoutInterval = 30.0  // 30秒超时
 
-        // 构建请求体
-        let requestBody: [String: Any] = [
-            "contents": [
-                [
-                    "parts": [
+                // 构建请求体
+                let requestBody: [String: Any] = [
+                    "contents": [
                         [
-                            "text": "请将这段音频转录为文字，只返回转录的文字内容，不要添加任何解释或格式："
-                        ],
-                        [
-                            "inline_data": [
-                                "mime_type": "audio/mp4",
-                                "data": base64Audio
+                            "parts": [
+                                [
+                                    "text": "Please transcribe this audio recording accurately. Rules: 1) Return ONLY the exact words spoken, 2) No explanations or descriptions, 3) Preserve the original language (Chinese/English/etc), 4) Include punctuation naturally, 5) If unclear, transcribe your best guess rather than noting uncertainty."
+                                ],
+                                [
+                                    "inline_data": [
+                                        "mime_type": "audio/wav",
+                                        "data": base64Audio
+                                    ]
+                                ]
                             ]
                         ]
+                    ],
+                    "generationConfig": [
+                        "temperature": 0.0,  // 设为0以获得最确定的结果
+                        "topK": 1,  // 只选择最可能的token
+                        "topP": 0.1,  // 减少随机性
+                        "maxOutputTokens": 2000  // 增加输出长度限制
                     ]
                 ]
-            ],
-            "generationConfig": [
-                "temperature": 0.1,
-                "maxOutputTokens": 1000
-            ]
-        ]
 
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+                request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
-        // 发送请求
-        let (data, response) = try await URLSession.shared.data(for: request)
+                // 发送请求
+                let (data, response) = try await URLSession.shared.data(for: request)
 
-        // 检查HTTP响应
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw TranscriptionError.transcriptionFailed("无效的响应")
+                // 检查HTTP响应
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw TranscriptionError.transcriptionFailed("无效的响应")
+                }
+
+                // 处理不同的状态码
+                switch httpResponse.statusCode {
+                case 200:
+                    // 成功，继续解析
+                    break
+                case 429:
+                    // 速率限制，需要重试
+                    print("⚠️ API速率限制 (429)，等待后重试...")
+                    lastError = TranscriptionError.transcriptionFailed("API速率限制，请稍后重试")
+                    retryCount += 1
+                    // 指数退避：2^retryCount 秒
+                    let waitTime = pow(2.0, Double(retryCount))
+                    try await Task.sleep(nanoseconds: UInt64(waitTime * 1_000_000_000))
+                    continue
+                case 503:
+                    // 服务暂时不可用，需要重试
+                    print("⚠️ 服务暂时不可用 (503)，等待后重试...")
+                    lastError = TranscriptionError.transcriptionFailed("服务暂时不可用")
+                    retryCount += 1
+                    let waitTime = pow(2.0, Double(retryCount))
+                    try await Task.sleep(nanoseconds: UInt64(waitTime * 1_000_000_000))
+                    continue
+                default:
+                    let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
+                    print("❌ API错误 (\(httpResponse.statusCode)): \(errorMessage)")
+                    throw TranscriptionError.transcriptionFailed("API错误: \(httpResponse.statusCode)")
+                }
+
+                // 解析响应
+                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let candidates = json["candidates"] as? [[String: Any]],
+                      let firstCandidate = candidates.first,
+                      let content = firstCandidate["content"] as? [String: Any],
+                      let parts = content["parts"] as? [[String: Any]],
+                      let firstPart = parts.first,
+                      let text = firstPart["text"] as? String else {
+
+                    let responseString = String(data: data, encoding: .utf8) ?? "无法解析响应"
+                    print("❌ 响应解析失败: \(responseString)")
+                    throw TranscriptionError.transcriptionFailed("响应解析失败")
+                }
+
+                let transcription = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                print("🎤 转录成功: \(transcription)")
+
+                return transcription
+                
+            } catch {
+                lastError = error
+                if retryCount < maxRetries - 1 {
+                    print("⚠️ 请求失败，准备重试 (\(retryCount + 1)/\(maxRetries))...")
+                    retryCount += 1
+                } else {
+                    // 达到最大重试次数
+                    throw lastError ?? error
+                }
+            }
         }
-
-        guard httpResponse.statusCode == 200 else {
-            let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
-            print("❌ API错误 (\(httpResponse.statusCode)): \(errorMessage)")
-            throw TranscriptionError.transcriptionFailed("API错误: \(httpResponse.statusCode)")
-        }
-
-        // 解析响应
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let candidates = json["candidates"] as? [[String: Any]],
-              let firstCandidate = candidates.first,
-              let content = firstCandidate["content"] as? [String: Any],
-              let parts = content["parts"] as? [[String: Any]],
-              let firstPart = parts.first,
-              let text = firstPart["text"] as? String else {
-
-            let responseString = String(data: data, encoding: .utf8) ?? "无法解析响应"
-            print("❌ 响应解析失败: \(responseString)")
-            throw TranscriptionError.transcriptionFailed("响应解析失败")
-        }
-
-        let transcription = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        print("🎤 转录成功: \(transcription)")
-
-        return transcription
+        
+        throw lastError ?? TranscriptionError.transcriptionFailed("转录失败")
     }
 
     deinit {
         scrollUpdateTimer?.invalidate()
         typewriterTimer?.invalidate()
+        
+        // 清理语音识别资源（在非主线程中）
+        audioEngine?.stop()
+        audioEngine?.inputNode.removeTap(onBus: 0)
+        recognitionRequest?.endAudio()
+        recognitionTask?.finish()
+        audioRecorder?.stop()
+    }
+}
+
+// MARK: - 语音识别方法
+
+enum SpeechRecognitionMethod: String, CaseIterable {
+    case appleSpeech = "Apple Speech"
+    case geminiAPI = "Gemini API"
+    
+    var displayName: String {
+        return self.rawValue
     }
 }
 
@@ -933,6 +1213,8 @@ enum TranscriptionError: LocalizedError {
     case missingAPIKey
     case audioFileNotFound
     case transcriptionFailed(String)
+    case speechRecognitionNotAvailable
+    case permissionDenied
 
     var errorDescription: String? {
         switch self {
@@ -942,6 +1224,10 @@ enum TranscriptionError: LocalizedError {
             return "音频文件未找到"
         case .transcriptionFailed(let message):
             return "转录失败: \(message)"
+        case .speechRecognitionNotAvailable:
+            return "语音识别服务不可用"
+        case .permissionDenied:
+            return "语音识别权限被拒绝"
         }
     }
 }

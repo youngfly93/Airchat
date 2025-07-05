@@ -152,6 +152,11 @@ struct ChatWindow: View {
                         .animation(.easeInOut(duration: 0.2), value: vm.isRecording)
                 }
                 .buttonStyle(.plain)
+                .onLongPressGesture {
+                    // 长按切换语音识别方法
+                    vm.switchSpeechRecognitionMethod()
+                }
+                .help("点击录音，长按切换识别方式（当前：\(vm.speechRecognitionMethod.displayName)）")
                 
                 // 发送按钮
                 Button(action: {
@@ -535,6 +540,11 @@ struct ChatWindow: View {
                         .animation(.easeInOut(duration: 0.2), value: vm.isRecording)
                 }
                 .buttonStyle(.plain)
+                .onLongPressGesture {
+                    // 长按切换语音识别方法
+                    vm.switchSpeechRecognitionMethod()
+                }
+                .help("点击录音，长按切换识别方式（当前：\(vm.speechRecognitionMethod.displayName)）")
                 
                 // 发送按钮
                 enhancedCompactSendButton
