@@ -131,13 +131,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Set up the button
         if let button = statusItem.button {
-            if let image = NSImage(named: "MenuIcon") {
-                // 增大菜单栏图标尺寸，从 20x20 改为 30x30
-                image.size = NSSize(width: 30, height: 30)
-                // 不设置为 template，保持原始颜色
+            // 🎨 使用白色版本的菜单栏图标，与其他应用保持一致
+            if let image = NSImage(named: "MenuIconWhite") {
+                // 调整菜单栏图标尺寸为 24x24，更符合系统标准
+                image.size = NSSize(width: 24, height: 24)
+                // 设置为 template 模式，让系统自动适配深色/浅色模式
+                image.isTemplate = true
+                button.image = image
+            } else if let image = NSImage(named: "MenuIcon") {
+                // 备用方案：使用原始图标
+                image.size = NSSize(width: 24, height: 24)
                 button.image = image
             } else {
-                // 备用方案：使用系统图标
+                // 最后备用方案：使用系统图标
                 button.image = NSImage(systemSymbolName: "bubble.left.and.bubble.right", accessibilityDescription: "Airchat")
             }
             button.action = #selector(toggleMenu)
@@ -329,7 +335,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // 优化的窗口动画系统
     private var animationTimer: Timer?
     private var animationStartTime: CFTimeInterval = 0
-    private var animationDuration: CFTimeInterval = 0.2
+    private var animationDuration: CFTimeInterval = 0.35
     private var startFrame = NSRect.zero
     private var targetFrame = NSRect.zero
     private var isAnimating = false
@@ -359,8 +365,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 保持底部位置固定：新窗口底部 = 原窗口底部
         targetFrame.origin.y = startFrame.origin.y + startFrame.height - targetSize.height
         
-        // 立即切换SwiftUI内容
-        NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
+        // 🔧 修复：延迟切换SwiftUI内容，避免视觉分层
+        // 在动画开始后稍微延迟切换内容，让窗口frame先开始变化
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
+        }
         
         // 立即开始窗口尺寸动画
         startTimerAnimation()
@@ -375,8 +384,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 开始性能监测
         AnimationPerformanceMonitor.shared.startMonitoring()
         
-        // 创建高精度定时器（60fps = 16.67ms间隔）
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
+        // 创建超高精度定时器（120fps = 8.33ms间隔）- 更丝滑的动画
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 1.0/120.0, repeats: true) { [weak self] _ in
             self?.updateAnimation()
         }
         
@@ -400,22 +409,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let elapsed = currentTime - animationStartTime
         let progress = min(elapsed / animationDuration, 1.0)
 
-        // 使用优化的缓动函数
-        let easedProgress = easeInOutCubic(progress)
+        // 使用更丝滑的缓动函数 - 模拟真实窗帘下拉的物理效果
+        let easedProgress = easeOutQuart(progress)
 
-        // 计算插值frame
+        // 计算插值frame - 使用高精度插值确保丝滑过渡
         let currentFrame = NSRect(
-            x: lerp(startFrame.origin.x, targetFrame.origin.x, easedProgress),
-            y: lerp(startFrame.origin.y, targetFrame.origin.y, easedProgress),
-            width: lerp(startFrame.width, targetFrame.width, easedProgress),
-            height: lerp(startFrame.height, targetFrame.height, easedProgress)
+            x: smoothLerp(startFrame.origin.x, targetFrame.origin.x, easedProgress),
+            y: smoothLerp(startFrame.origin.y, targetFrame.origin.y, easedProgress),
+            width: smoothLerp(startFrame.width, targetFrame.width, easedProgress),
+            height: smoothLerp(startFrame.height, targetFrame.height, easedProgress)
         )
 
         // 设置frame并保持视觉效果
         panel.setFrame(currentFrame, display: true, animate: false)
 
-        // 🔧 关键修复：动画过程中实时更新遮罩
-        updateWindowMaskForCurrentFrame(currentFrame)
+        // 🔧 优化：减少遮罩更新频率，避免过度重绘
+        // 只在关键帧更新遮罩，减少视觉抖动
+        let frameCount = Int(progress * 60) // 基于60fps计算帧数
+        if frameCount % 3 == 0 || progress >= 1.0 { // 每3帧更新一次遮罩
+            updateWindowMaskForCurrentFrame(currentFrame)
+        }
 
         // 动画完成
         if progress >= 1.0 {
@@ -437,17 +450,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel?.displaysWhenScreenProfileChanges = true
     }
     
-    // 优化的缓动函数
-    private func easeInOutCubic(_ t: Double) -> Double {
+    // 更丝滑的缓动函数 - 模拟窗帘下拉的自然物理效果
+    private func easeOutQuart(_ t: Double) -> Double {
+        let p = t - 1
+        return 1 - p * p * p * p
+    }
+
+    // 备用的更平滑缓动函数
+    private func easeInOutQuint(_ t: Double) -> Double {
         if t < 0.5 {
-            return 4 * t * t * t
+            return 16 * t * t * t * t * t
         } else {
             let p = 2 * t - 2
-            return 1 + p * p * p / 2
+            return 1 + p * p * p * p * p / 2
         }
     }
     
-    // 线性插值
+    // 高精度平滑插值 - 减少动画抖动
+    private func smoothLerp(_ start: Double, _ end: Double, _ progress: Double) -> Double {
+        // 使用更高精度的计算，避免浮点数精度问题
+        let diff = end - start
+        let result = start + diff * progress
+
+        // 对于非常小的变化，直接返回目标值避免抖动
+        if abs(diff) < 0.01 && progress > 0.95 {
+            return end
+        }
+
+        return result
+    }
+
+    // 标准线性插值（备用）
     private func lerp(_ start: Double, _ end: Double, _ progress: Double) -> Double {
         return start + (end - start) * progress
     }
@@ -597,7 +630,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         applyWindowMask(cornerRadius: cornerRadius)
     }
     
-    // 优化的窗口mask应用 - 减少重建频率
+    // 优化的窗口mask应用 - 减少重建频率和视觉抖动
     private func applyWindowMask(cornerRadius: CGFloat = 20) {
         guard let panel = panel, let contentView = panel.contentView else { return }
 
@@ -609,13 +642,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let windowFrame = contentView.bounds
         guard windowFrame.width > 0 && windowFrame.height > 0 else { return }
 
-        // 🔧 优化：复用现有的mask layer，只更新path
+        // 🔧 优化：复用现有的mask layer，只更新path，并添加平滑过渡
         if let layer = contentView.layer {
             let path = NSBezierPath(roundedRect: windowFrame, xRadius: cornerRadius, yRadius: cornerRadius)
 
             if let existingMask = layer.mask as? CAShapeLayer {
+                // 🔧 关键修复：使用隐式动画让遮罩变化更平滑
+                CATransaction.begin()
+                CATransaction.setDisableActions(false) // 启用隐式动画
+                CATransaction.setAnimationDuration(0.1) // 短暂的过渡动画
+                CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+
                 // 复用现有的mask layer，只更新path
                 existingMask.path = path.cgPath
+
+                CATransaction.commit()
             } else {
                 // 首次创建mask layer
                 let shapeLayer = CAShapeLayer()
