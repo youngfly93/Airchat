@@ -51,6 +51,15 @@ class ModelConfig: ObservableObject {
                 pricing: AIModel.ModelPricing(input: 1.25, output: 5.0)
             ),
             AIModel(
+                id: "google-official/gemini-2.5-flash",
+                name: "Gemini 2.5 Flash (官方)",
+                provider: "Google Official",
+                description: "Google官方Gemini 2.5 Flash模型，混合推理模型，支持思考链显示",
+                supportsReasoning: true,
+                contextWindow: 1000000,
+                pricing: AIModel.ModelPricing(input: 0.30, output: 2.50)
+            ),
+            AIModel(
                 id: "google-official/gemini-2.0-flash-thinking-exp",
                 name: "Gemini 2.0 Flash Thinking (官方)",
                 provider: "Google Official",

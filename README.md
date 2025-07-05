@@ -69,6 +69,7 @@
 
 ### Google Gemini Direct API
 - Gemini 2.5 Pro
+- Gemini 2.5 Flash
 - Gemini 2.0 Flash Thinking
 - MiniMax M1
 

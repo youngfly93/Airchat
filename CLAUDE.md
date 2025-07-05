@@ -70,7 +70,7 @@ The app supports two API configurations:
 
 #### Google Gemini Direct API (via GeminiOfficialAPI)
 - **Endpoint**: https://generativelanguage.googleapis.com/v1beta/models
-- **Models**: gemini-2.5-pro, gemini-2.0-flash-thinking-exp, minimax-01
+- **Models**: gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash-thinking-exp, minimax-01
 - **Authentication**: Google API key stored in Keychain (key: "google_api_key")
 - **Features**: Thinking mode, multi-modal support, advanced reasoning
 

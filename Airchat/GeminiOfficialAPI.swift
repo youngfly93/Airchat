@@ -156,7 +156,7 @@ final class GeminiOfficialAPI {
         }
         
         // 检查模型是否支持思考链
-        let supportsThinking = model.contains("thinking")
+        let supportsThinking = model.contains("thinking") || model.contains("gemini-2.5-flash")
         
         let thinkingConfig = supportsThinking ? GeminiRequest.ThinkingConfig(includeThoughts: true) : nil
         
