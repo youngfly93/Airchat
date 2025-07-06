@@ -335,7 +335,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // 优化的窗口动画系统
     private var animationTimer: Timer?
     private var animationStartTime: CFTimeInterval = 0
-    private var animationDuration: CFTimeInterval = 0.2
+    private var animationDuration: CFTimeInterval = 0.3
     private var startFrame = NSRect.zero
     private var targetFrame = NSRect.zero
     private var isAnimating = false

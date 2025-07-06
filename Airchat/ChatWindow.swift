@@ -21,33 +21,77 @@ struct ChatWindow: View {
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
     
     var body: some View {
-        // 使用单一容器，通过内容动画切换避免视图重叠
-        ZStack {
-            if isCollapsed {
-                collapsedView
-                    .zIndex(1)
-            } else {
-                expandedView
-                    .zIndex(1)
+        // 使用连续变形动画，让窗口内容顺滑过渡而不是分离的两个视图
+        VStack(spacing: 0) {
+            // 展开状态的顶部内容（聊天历史），折叠时隐藏
+            if !isCollapsed {
+                VStack(spacing: 0) {
+                    // 聊天历史区域
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(vm.messages.filter { $0.role != .system && $0.role != .tool }) { message in
+                                bubble(for: message)
+                                    .padding(.horizontal, 16)
+                            }
+                        }
+                        .padding(.vertical, 16)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .simpleGlass(cornerRadius: 0, intensity: .ultraThin)
+                    
+                    // 分割线
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.1))
+                        .frame(height: 1)
+                }
+                .transition(.asymmetric(
+                    insertion: .move(edge: .top).combined(with: .opacity),
+                    removal: .move(edge: .top).combined(with: .opacity)
+                ))
             }
+            
+            // 底部输入区域（始终存在，高度和内容会变化）
+            VStack(spacing: 8) {
+                // 如果有选中的图片，显示预览（展开模式下显示更多）
+                if !vm.selectedImages.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(vm.selectedImages) { image in
+                                if isCollapsed {
+                                    collapsedImagePreview(image)
+                                } else {
+                                    imagePreviewItem(image)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                    .frame(height: isCollapsed ? 60 : 80)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                
+                // 统一的输入框区域，在折叠和展开时保持连续性
+                unifiedInputBar
+            }
+            .padding(isCollapsed ? 10 : 16)
+            .simpleGlass(cornerRadius: isCollapsed ? 32 : 20, intensity: .thick)
         }
         .background(Color.clear)
-        .clipped() // 确保内容不会溢出容器边界
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
                let collapsed = userInfo["isCollapsed"] as? Bool {
-                // 使用更快的动画减少重叠时间，并使用更简单的缓动
-                withAnimation(.linear(duration: 0.2)) {
+                // 使用流畅的变形动画，让内容连续过渡
+                withAnimation(.easeInOut(duration: 0.3)) {
                     isCollapsed = collapsed
                 }
                 
                 // 延迟设置焦点，配合动画时长
                 if collapsed {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                         isCollapsedInputFocused = true
                     }
                 } else {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                         isInputFocused = true
                     }
                 }
@@ -998,6 +1042,200 @@ struct ChatWindow: View {
             }
             .buttonStyle(.plain)
             .offset(x: 4, y: -4)
+        }
+    }
+    
+    // 统一的输入框实现，支持连续变形动画
+    private var unifiedInputBar: some View {
+        HStack(spacing: isCollapsed ? 8 : 12) {
+            // 左侧功能按钮组
+            HStack(spacing: isCollapsed ? 8 : 12) {
+                // 添加按钮
+                Button(action: {
+                    vm.showFileImporter = true
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: isCollapsed ? 14 : 16, weight: .medium))
+                        .foregroundColor(.primary.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                
+                // 网络搜索按钮
+                if !isCollapsed || vm.supportsWebSearch {
+                    Button(action: {
+                        if vm.supportsWebSearch {
+                            vm.toggleWebSearch()
+                        }
+                    }) {
+                        Image(systemName: vm.isWebSearchEnabled ? "globe.badge.chevron.backward" : "globe")
+                            .font(.system(size: isCollapsed ? 14 : 16, weight: .medium))
+                            .foregroundColor(
+                                vm.supportsWebSearch 
+                                    ? (vm.isWebSearchEnabled ? softBlue : .primary.opacity(0.7))
+                                    : .secondary
+                            )
+                            .opacity(vm.supportsWebSearch ? 1.0 : 0.5)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!vm.supportsWebSearch)
+                    .transition(.asymmetric(
+                        insertion: .scale.combined(with: .opacity),
+                        removal: .scale.combined(with: .opacity)
+                    ))
+                }
+                
+                // 折叠状态下的展开按钮
+                if isCollapsed {
+                    Button(action: {
+                        WindowManager.shared.toggleWindowState(collapsed: false)
+                    }) {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.primary.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                    .help("展开窗口")
+                    .transition(.asymmetric(
+                        insertion: .scale.combined(with: .opacity),
+                        removal: .scale.combined(with: .opacity)
+                    ))
+                }
+                
+                // 展开状态下的折叠按钮
+                if !isCollapsed {
+                    Button(action: {
+                        WindowManager.shared.toggleWindowState(collapsed: true)
+                    }) {
+                        Image(systemName: "minus.circle")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                    .help("折叠窗口")
+                    .transition(.asymmetric(
+                        insertion: .scale.combined(with: .opacity),
+                        removal: .scale.combined(with: .opacity)
+                    ))
+                }
+            }
+            
+            // 中间的输入框区域
+            HStack(spacing: 8) {
+                // 输入文本框
+                TextField(
+                    isCollapsed ? "询问任何问题…" : "输入消息...", 
+                    text: $vm.composing, 
+                    axis: .vertical
+                )
+                .textFieldStyle(.plain)
+                .font(.system(size: isCollapsed ? 14 : 15))
+                .lineLimit(isCollapsed ? 1...2 : 1...4)
+                .focusable()
+                .focused(isCollapsed ? $isCollapsedInputFocused : $isInputFocused)
+                .focusEffectDisabled()
+                .onSubmit {
+                    let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
+                    if hasContent {
+                        if isCollapsed {
+                            // 折叠状态下先展开再发送
+                            WindowManager.shared.toggleWindowState(collapsed: false)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                vm.send()
+                            }
+                        } else {
+                            // 展开状态下直接发送
+                            vm.send()
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                
+                // 右侧按钮组
+                HStack(spacing: isCollapsed ? 6 : 8) {
+                    // 语音按钮
+                    Button(action: {
+                        vm.toggleVoiceRecording()
+                    }) {
+                        Image(systemName: vm.isRecording ? "mic.fill" : "mic")
+                            .font(.system(size: isCollapsed ? 14 : 16, weight: .medium))
+                            .foregroundColor(vm.isRecording ? .red : .secondary)
+                            .scaleEffect(vm.isRecording ? 1.1 : 1.0)
+                            .animation(.easeInOut(duration: 0.2), value: vm.isRecording)
+                    }
+                    .buttonStyle(.plain)
+                    .onLongPressGesture {
+                        vm.switchSpeechRecognitionMethod()
+                    }
+                    .help("点击录音，长按切换识别方式")
+                    
+                    // 发送按钮
+                    Button(action: {
+                        let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
+                        if hasContent {
+                            if isCollapsed {
+                                WindowManager.shared.toggleWindowState(collapsed: false)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    vm.send()
+                                }
+                            } else {
+                                vm.send()
+                            }
+                        }
+                    }) {
+                        let canSend = !vm.composing.isEmpty || !vm.selectedImages.isEmpty
+                        Image(systemName: canSend ? "arrow.up.circle.fill" : "arrow.up.circle")
+                            .font(.system(size: isCollapsed ? 18 : 20, weight: .medium))
+                            .foregroundColor(canSend ? softBlue : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(vm.composing.isEmpty && vm.selectedImages.isEmpty)
+                }
+            }
+            .padding(.horizontal, isCollapsed ? 12 : 16)
+            .padding(.vertical, isCollapsed ? 8 : 12)
+            .background(
+                RoundedRectangle(cornerRadius: isCollapsed ? 24 : 16, style: .continuous)
+                    .fill(.regularMaterial.opacity(0.5))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: isCollapsed ? 24 : 16, style: .continuous)
+                    .strokeBorder(
+                        (isCollapsed ? isCollapsedInputFocused : isInputFocused) ? softBlue.opacity(0.3) : Color.white.opacity(0.1),
+                        lineWidth: 0.5
+                    )
+            )
+        }
+        .animation(.easeInOut(duration: 0.3), value: isCollapsed)
+        .fileImporter(
+            isPresented: $vm.showFileImporter,
+            allowedContentTypes: [.image, .pdf],
+            allowsMultipleSelection: true
+        ) { result in
+            vm.handleFileSelection(result)
+        }
+        .onDrop(of: [.fileURL, .image, .png, .jpeg, .tiff], isTargeted: nil) { providers in
+            for provider in providers {
+                if provider.canLoadObject(ofClass: URL.self) {
+                    _ = provider.loadObject(ofClass: URL.self) { url, error in
+                        guard let url = url else { return }
+                        let imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "heic", "webp"]
+                        if imageExtensions.contains(url.pathExtension.lowercased()) {
+                            DispatchQueue.main.async {
+                                self.vm.handleDroppedImageFile(at: url)
+                            }
+                        }
+                    }
+                } else if provider.hasItemConformingToTypeIdentifier("public.image") {
+                    _ = provider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, error in
+                        guard let data = data,
+                              let image = NSImage(data: data) else { return }
+                        DispatchQueue.main.async {
+                            self.vm.handleDroppedImage(image)
+                        }
+                    }
+                }
+            }
+            return true
         }
     }
 }
