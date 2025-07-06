@@ -14,10 +14,10 @@ struct GlassConfiguration {
     var isInteractive: Bool = false
     var isEnabled: Bool = true
     
-    // 预定义的色调
-    static let blueTint = GlassConfiguration(tint: Color.blue.opacity(0.3))
-    static let greenTint = GlassConfiguration(tint: Color.green.opacity(0.3))
-    static let purpleTint = GlassConfiguration(tint: Color.purple.opacity(0.3))
+    // 预定义的色调 - 更加透明
+    static let blueTint = GlassConfiguration(tint: Color.blue.opacity(0.1))
+    static let greenTint = GlassConfiguration(tint: Color.green.opacity(0.1))
+    static let purpleTint = GlassConfiguration(tint: Color.purple.opacity(0.1))
 }
 
 enum GlassIntensity {
@@ -29,21 +29,21 @@ enum GlassIntensity {
     
     var blurRadius: CGFloat {
         switch self {
-        case .ultraThin: return 10
-        case .thin: return 20
-        case .regular: return 30
-        case .thick: return 40
-        case .ultraThick: return 50
+        case .ultraThin: return 3
+        case .thin: return 5
+        case .regular: return 8
+        case .thick: return 12
+        case .ultraThick: return 16
         }
     }
     
     var opacity: Double {
         switch self {
-        case .ultraThin: return 0.3
-        case .thin: return 0.5
-        case .regular: return 0.7
-        case .thick: return 0.8
-        case .ultraThick: return 0.9
+        case .ultraThin: return 0.05
+        case .thin: return 0.1
+        case .regular: return 0.15
+        case .thick: return 0.2
+        case .ultraThick: return 0.25
         }
     }
 }
@@ -78,75 +78,75 @@ struct LiquidGlassEffect: ViewModifier {
                     .stroke(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.white.opacity(colorScheme == .dark ? 0.3 : 0.5),
-                                Color.white.opacity(0.1)
+                                Color.white.opacity(colorScheme == .dark ? 0.15 : 0.25),
+                                Color.white.opacity(0.05)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        lineWidth: 0.5
+                        lineWidth: 0.3
                     )
             )
-            .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
     }
     
     @ViewBuilder
     private var glassBackground: some View {
         ZStack {
-            // 基础模糊层
+            // 基础透明模糊层
             shape
                 .fill(.ultraThinMaterial)
-                .blur(radius: configuration.intensity.blurRadius * 0.5)
+                .opacity(0.3)
             
-            // 主玻璃效果层
+            // 主玻璃效果层 - 几乎透明
             shape
                 .fill(
                     LinearGradient(
                         gradient: Gradient(colors: [
                             baseColor.opacity(configuration.intensity.opacity),
-                            baseColor.opacity(configuration.intensity.opacity * 0.7)
+                            baseColor.opacity(configuration.intensity.opacity * 0.5)
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
-                .blur(radius: configuration.intensity.blurRadius * 0.3)
+                .blur(radius: configuration.intensity.blurRadius * 0.2)
             
-            // 液体流动效果层（使用噪点模拟）
+            // 液体流动效果层（更轻微）
             if configuration.isInteractive {
                 shape
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.white.opacity(0.1),
+                                Color.white.opacity(0.02),
                                 Color.clear,
-                                Color.white.opacity(0.05)
+                                Color.white.opacity(0.01)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .scaleEffect(1.0 + sin(animationPhase) * 0.02)
+                    .scaleEffect(1.0 + sin(animationPhase) * 0.01)
                     .onAppear {
-                        withAnimation(.easeInOut(duration: 3).repeatForever(autoreverses: true)) {
+                        withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
                             animationPhase = .pi * 2
                         }
                     }
             }
             
-            // 高光层
+            // 微妙高光层
             shape
                 .fill(
                     LinearGradient(
                         gradient: Gradient(stops: [
-                            .init(color: Color.white.opacity(0.3), location: 0),
-                            .init(color: Color.clear, location: 0.5)
+                            .init(color: Color.white.opacity(0.1), location: 0),
+                            .init(color: Color.clear, location: 0.3)
                         ]),
                         startPoint: .topLeading,
                         endPoint: .center
                     )
                 )
-                .blur(radius: 2)
+                .blur(radius: 1)
         }
     }
     
@@ -154,7 +154,8 @@ struct LiquidGlassEffect: ViewModifier {
         if let tint = configuration.tint {
             return tint
         }
-        return colorScheme == .dark ? Color.black : Color.white
+        // 使用极其微妙的中性灰色，几乎透明
+        return colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2)
     }
 }
 

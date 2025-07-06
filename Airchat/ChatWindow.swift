@@ -850,7 +850,7 @@ struct ChatWindow: View {
                 .liquidGlass(
                     isDisabled ? .ultraThin : .thin,
                     in: Circle(),
-                    tint: isDisabled ? nil : softBlue.opacity(0.2),
+                    tint: isDisabled ? nil : softBlue.opacity(0.05),
                     isInteractive: !isDisabled
                 )
         }
@@ -939,7 +939,7 @@ struct ChatWindow: View {
         }
         .buttonStyle(.plain)
         .frame(width: 36, height: 36)
-        .liquidGlass(.thin, in: Circle(), tint: softBlue.opacity(0.3))
+        .liquidGlass(.thin, in: Circle(), tint: softBlue.opacity(0.05))
         .fileImporter(
             isPresented: $vm.showFileImporter,
             allowedContentTypes: [.image, .pdf],
