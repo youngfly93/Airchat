@@ -335,7 +335,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // 优化的窗口动画系统
     private var animationTimer: Timer?
     private var animationStartTime: CFTimeInterval = 0
-    private var animationDuration: CFTimeInterval = 0.6
+    private var animationDuration: CFTimeInterval = 0.4
     private var startFrame = NSRect.zero
     private var targetFrame = NSRect.zero
     private var isAnimating = false
@@ -409,8 +409,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let elapsed = currentTime - animationStartTime
         let progress = min(elapsed / animationDuration, 1.0)
 
-        // 使用更丝滑的缓动函数 - 模拟自然的弹性效果
-        let easedProgress = easeInOutCubic(progress)
+        // 使用卷帘门效果的缓动函数 - 更接近线性但稍微柔和
+        let easedProgress = easeInOutSine(progress)
 
         // 计算插值frame - 使用高精度插值确保丝滑过渡
         let currentFrame = NSRect(
@@ -423,10 +423,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 设置frame并保持视觉效果
         panel.setFrame(currentFrame, display: true, animate: false)
 
-        // 🔧 优化：智能遮罩更新策略，在动画开始和结束时更频繁更新
+        // 🔧 卷帘门效果：更频繁的遮罩更新确保平滑
         let frameCount = Int(progress * 60) // 基于60fps计算帧数
-        let shouldUpdateMask = progress < 0.1 || progress > 0.9 || frameCount % 4 == 0 || progress >= 1.0
-        if shouldUpdateMask {
+        if frameCount % 2 == 0 || progress >= 1.0 { // 每2帧更新一次，保持流畅
             updateWindowMaskForCurrentFrame(currentFrame)
         }
 
@@ -448,6 +447,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         
         // 恢复正常的窗口设置
         panel?.displaysWhenScreenProfileChanges = true
+    }
+    
+    // 卷帘门效果的缓动函数 - 接近线性但更柔和
+    private func easeInOutSine(_ t: Double) -> Double {
+        return -(cos(.pi * t) - 1) / 2
     }
     
     // 更丝滑的缓动函数 - 模拟自然的过渡效果
