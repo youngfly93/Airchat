@@ -27,32 +27,52 @@ struct ChatWindow: View {
                 if isCollapsed {
                     collapsedView
                         .transition(.asymmetric(
-                            insertion: .scale(scale: 0.8).combined(with: .opacity),
-                            removal: .scale(scale: 1.2).combined(with: .opacity)
+                            insertion: .scale(scale: 0.9, anchor: .bottom)
+                                .combined(with: .opacity)
+                                .combined(with: .move(edge: .bottom)),
+                            removal: .scale(scale: 1.1, anchor: .top)
+                                .combined(with: .opacity)
+                                .combined(with: .move(edge: .top))
                         ))
                 } else {
                     expandedView
                         .transition(.asymmetric(
-                            insertion: .scale(scale: 1.2).combined(with: .opacity),
-                            removal: .scale(scale: 0.8).combined(with: .opacity)
+                            insertion: .scale(scale: 0.9, anchor: .top)
+                                .combined(with: .opacity)
+                                .combined(with: .move(edge: .top)),
+                            removal: .scale(scale: 1.1, anchor: .bottom)
+                                .combined(with: .opacity)
+                                .combined(with: .move(edge: .bottom))
                         ))
                 }
             }
+            // 预加载隐藏的视图以减少过渡延迟
+            .background(
+                Group {
+                    if isCollapsed {
+                        expandedView.opacity(0).allowsHitTesting(false)
+                    } else {
+                        collapsedView.opacity(0).allowsHitTesting(false)
+                    }
+                }
+            )
         }
         .background(Color.clear)
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
                let collapsed = userInfo["isCollapsed"] as? Bool {
-                // 立即切换，不使用任何SwiftUI动画
-                isCollapsed = collapsed
+                // 使用丝滑的SwiftUI动画配合NSPanel动画
+                withAnimation(.timingCurve(0.25, 0.1, 0.25, 1.0, duration: 0.6).delay(0.1)) {
+                    isCollapsed = collapsed
+                }
                 
-                // 设置焦点
+                // 延迟设置焦点，配合动画时长
                 if collapsed {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                         isCollapsedInputFocused = true
                     }
                 } else {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                         isInputFocused = true
                     }
                 }
