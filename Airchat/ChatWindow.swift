@@ -35,14 +35,65 @@ struct ChatWindow: View {
                         .frame(height: 1)
                     
                     // 聊天历史区域
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(vm.messages.filter { $0.role != .system && $0.role != .tool }) { message in
-                                bubble(for: message)
-                                    .padding(.horizontal, 16)
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            LazyVStack(alignment: .leading, spacing: 8) {
+                                // 确保至少有一个元素，避免完全空白
+                                if vm.messages.filter({ $0.role != .system && $0.role != .tool }).isEmpty && !vm.isLoading {
+                                    Text("开始对话吧...")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 20)
+                                }
+                                
+                                ForEach(vm.messages.filter { $0.role != .system && $0.role != .tool }) { message in
+                                    bubble(for: message)
+                                        .id(message.id)
+                                }
+                                
+                                if vm.isLoading {
+                                    HStack {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                        Text("AI is thinking...")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal)
+                                }
+                                
+                                // 底部哨兵，确保内容始终贴着输入框上沿
+                                Color.clear
+                                    .frame(height: 1)
+                                    .id("BOTTOM")
+                            }
+                            .padding(.horizontal)
+                            .padding(.top)
+                            .padding(.bottom, 5) // 确保内容贴近输入框但不被遮挡
+                            .frame(minHeight: 100) // 设置最小高度，防止内容过少时的布局问题
+                        }
+                        .scrollBounceBehavior(.basedOnSize)
+                        .clipped() // 防止内容溢出滚动视图边界
+                        .background(Color.clear) // 确保背景透明
+                        .scrollDismissesKeyboard(.interactively)
+                        .onChange(of: vm.messages.count) {
+                            // 新增消息时滚动到底部，使用优化的动画
+                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
+                                proxy.scrollTo("BOTTOM", anchor: .bottom)
                             }
                         }
-                        .padding(.vertical, 16)
+                        .onReceive(vm.streamingScrollPublisher) { _ in
+                            // 流式输出期间的实时滚动，无动画确保跟随
+                            proxy.scrollTo("BOTTOM", anchor: .bottom)
+                        }
+                        .onReceive(vm.normalScrollPublisher) { _ in
+                            // 普通情况下的滚动，使用更快速的动画
+                            withAnimation(.interpolatingSpring(stiffness: 400, damping: 25)) {
+                                proxy.scrollTo("BOTTOM", anchor: .bottom)
+                            }
+                        }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
