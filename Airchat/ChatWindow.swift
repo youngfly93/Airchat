@@ -21,40 +21,33 @@ struct ChatWindow: View {
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
     
     var body: some View {
-        // 使用 VStack 替代 GlassEffectContainer
-        VStack(spacing: 20) {
-            Group {
-                if isCollapsed {
-                    collapsedView
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .top).combined(with: .opacity),
-                            removal: .move(edge: .top).combined(with: .opacity)
-                        ))
-                } else {
-                    expandedView
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .top).combined(with: .opacity),
-                            removal: .move(edge: .top).combined(with: .opacity)
-                        ))
-                }
+        // 使用单一容器，通过内容动画切换避免视图重叠
+        ZStack {
+            if isCollapsed {
+                collapsedView
+                    .zIndex(1)
+            } else {
+                expandedView
+                    .zIndex(1)
             }
         }
         .background(Color.clear)
+        .clipped() // 确保内容不会溢出容器边界
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
                let collapsed = userInfo["isCollapsed"] as? Bool {
-                // 使用卷帘门效果的动画 - 简洁的缓动
-                withAnimation(.easeInOut(duration: 0.4)) {
+                // 使用更快的动画减少重叠时间，并使用更简单的缓动
+                withAnimation(.linear(duration: 0.2)) {
                     isCollapsed = collapsed
                 }
                 
                 // 延迟设置焦点，配合动画时长
                 if collapsed {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                         isCollapsedInputFocused = true
                     }
                 } else {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                         isInputFocused = true
                     }
                 }

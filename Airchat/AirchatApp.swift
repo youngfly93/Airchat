@@ -335,7 +335,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // 优化的窗口动画系统
     private var animationTimer: Timer?
     private var animationStartTime: CFTimeInterval = 0
-    private var animationDuration: CFTimeInterval = 0.4
+    private var animationDuration: CFTimeInterval = 0.2
     private var startFrame = NSRect.zero
     private var targetFrame = NSRect.zero
     private var isAnimating = false
@@ -365,11 +365,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 保持底部位置固定：新窗口底部 = 原窗口底部
         targetFrame.origin.y = startFrame.origin.y + startFrame.height - targetSize.height
         
-        // 🔧 修复：延迟切换SwiftUI内容，避免视觉分层
-        // 在动画开始后稍微延迟切换内容，让窗口frame先开始变化
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
-        }
+        // 🔧 修复：即时切换SwiftUI内容，使用线性动画同步
+        // 立即通知内容切换，依靠更快的线性动画避免重叠
+        NotificationCenter.default.post(name: .windowStateChanged, object: nil, userInfo: ["isCollapsed": collapsed])
         
         // 立即开始窗口尺寸动画
         startTimerAnimation()
