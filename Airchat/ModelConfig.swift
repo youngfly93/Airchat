@@ -13,6 +13,7 @@ struct AIModel: Codable, Identifiable, Hashable {
     let provider: String
     let description: String
     let supportsReasoning: Bool
+    let supportsFiles: Bool
     let contextWindow: Int
     let pricing: ModelPricing
     
@@ -36,8 +37,9 @@ class ModelConfig: ObservableObject {
                 id: "google/gemini-2.5-pro",
                 name: "Gemini 2.5 Pro",
                 provider: "Google",
-                description: "最新的Gemini模型，支持推理过程显示",
+                description: "最新的Gemini模型，支持推理过程显示、图片和PDF文件",
                 supportsReasoning: true,
+                supportsFiles: true,
                 contextWindow: 2000000,
                 pricing: AIModel.ModelPricing(input: 3.5, output: 10.5)
             ),
@@ -45,8 +47,9 @@ class ModelConfig: ObservableObject {
                 id: "google-official/gemini-2.5-pro",
                 name: "Gemini 2.5 Pro (官方)",
                 provider: "Google Official",
-                description: "Google官方Gemini模型，直接调用Google API",
+                description: "Google官方Gemini模型，支持图片和PDF文件",
                 supportsReasoning: false,
+                supportsFiles: true,
                 contextWindow: 2000000,
                 pricing: AIModel.ModelPricing(input: 1.25, output: 5.0)
             ),
@@ -56,6 +59,7 @@ class ModelConfig: ObservableObject {
                 provider: "Google Official",
                 description: "Google官方Gemini 2.5 Flash模型，混合推理模型，支持思考链显示",
                 supportsReasoning: true,
+                supportsFiles: true,
                 contextWindow: 1000000,
                 pricing: AIModel.ModelPricing(input: 0.30, output: 2.50)
             ),
@@ -63,8 +67,9 @@ class ModelConfig: ObservableObject {
                 id: "google-official/gemini-2.0-flash-thinking-exp",
                 name: "Gemini 2.0 Flash Thinking (官方)",
                 provider: "Google Official",
-                description: "Google官方Gemini Flash思考链模型，支持推理过程显示",
+                description: "Google官方Gemini Flash思考链模型，支持推理过程和图片",
                 supportsReasoning: true,
+                supportsFiles: true,
                 contextWindow: 1000000,
                 pricing: AIModel.ModelPricing(input: 0.075, output: 0.30)
             ),
@@ -74,6 +79,7 @@ class ModelConfig: ObservableObject {
                 provider: "MiniMax",
                 description: "MiniMax最新模型，支持思考过程显示",
                 supportsReasoning: true,
+                supportsFiles: false,
                 contextWindow: 200000,
                 pricing: AIModel.ModelPricing(input: 0.15, output: 0.6)
             ),
@@ -81,8 +87,9 @@ class ModelConfig: ObservableObject {
                 id: "anthropic/claude-3.5-sonnet",
                 name: "Claude 3.5 Sonnet",
                 provider: "Anthropic",
-                description: "Claude 3.5 Sonnet，平衡性能与成本",
+                description: "Claude 3.5 Sonnet，支持图片和多种文件格式",
                 supportsReasoning: false,
+                supportsFiles: true,
                 contextWindow: 200000,
                 pricing: AIModel.ModelPricing(input: 3.0, output: 15.0)
             ),
@@ -90,8 +97,9 @@ class ModelConfig: ObservableObject {
                 id: "openai/o4-mini-high",
                 name: "O4 Mini High",
                 provider: "OpenAI",
-                description: "OpenAI最新高性能小型模型，支持思考过程",
+                description: "OpenAI最新高性能小型模型，支持思考过程和图片",
                 supportsReasoning: true,
+                supportsFiles: true,
                 contextWindow: 128000,
                 pricing: AIModel.ModelPricing(input: 0.15, output: 0.6)
             ),
@@ -99,8 +107,9 @@ class ModelConfig: ObservableObject {
                 id: "openai/gpt-4o",
                 name: "GPT-4o",
                 provider: "OpenAI",
-                description: "OpenAI最新多模态模型，支持联网搜索（点击联网开关启用）",
+                description: "OpenAI多模态模型，支持图片、文件和联网搜索",
                 supportsReasoning: false,
+                supportsFiles: true,
                 contextWindow: 128000,
                 pricing: AIModel.ModelPricing(input: 2.5, output: 10.0)
             ),
@@ -108,8 +117,9 @@ class ModelConfig: ObservableObject {
                 id: "meta-llama/llama-3.3-70b-instruct",
                 name: "Llama 3.3 70B",
                 provider: "Meta",
-                description: "开源大模型，性价比优秀",
+                description: "开源大模型，性价比优秀（仅支持文本）",
                 supportsReasoning: false,
+                supportsFiles: false,
                 contextWindow: 131072,
                 pricing: AIModel.ModelPricing(input: 0.64, output: 0.64)
             )
