@@ -16,7 +16,6 @@ struct ChatWindow: View {
     @State private var animationProgress: Double = 1.0
     @FocusState private var isInputFocused: Bool
     @FocusState private var isCollapsedInputFocused: Bool
-    @Namespace private var glassNamespace
     
     // 定义更柔和的蓝色
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
@@ -192,8 +191,7 @@ struct ChatWindow: View {
             }
             .frame(width: 480) // 🔧 设置固定宽度
             .frame(minHeight: 64) // 🔧 设置最小高度，允许根据内容动态调整
-            .liquidGlass(.regular, in: RoundedRectangle(cornerRadius: 32, style: .continuous), isInteractive: true)
-            .liquidGlassID("collapsedInput", in: glassNamespace)
+            .trueGlass(cornerRadius: 32, intensity: .regular)
             .overlay(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .strokeBorder(
@@ -270,8 +268,7 @@ struct ChatWindow: View {
         }
         .frame(width: 360)
         .frame(minHeight: 520, maxHeight: 550) // 🔧 降低最大高度，保持更紧凑的界面
-        .liquidGlass(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .liquidGlassID("expandedWindow", in: glassNamespace)
+        .trueGlass(cornerRadius: 20, intensity: .regular)
         // 简化阴影以提高性能
         .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
         .focusable()
@@ -350,7 +347,7 @@ struct ChatWindow: View {
                     .frame(height: 32)
                 }
                 .buttonStyle(.plain)
-                .liquidGlass(.thin, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .trueGlass(cornerRadius: 10, intensity: .thin)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
@@ -366,7 +363,7 @@ struct ChatWindow: View {
                 }
                 .buttonStyle(.plain)
                 .frame(width: 32, height: 32)
-                .liquidGlass(.thin, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .trueGlass(cornerRadius: 10, intensity: .thin)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
@@ -558,8 +555,7 @@ struct ChatWindow: View {
             .padding(.trailing, 16)
         }
         .frame(minHeight: 50, maxHeight: 80) // 🔧 降低最大高度，保持更紧凑的界面
-        .liquidGlass(.regular, in: RoundedRectangle(cornerRadius: 25, style: .continuous), isInteractive: true)
-        .liquidGlassID("expandedInput", in: glassNamespace)
+        .trueGlass(cornerRadius: 25, intensity: .regular)
         .overlay(
             RoundedRectangle(cornerRadius: 25, style: .continuous)
                 .strokeBorder(
@@ -634,7 +630,7 @@ struct ChatWindow: View {
                     }
                 }
                 .frame(width: 60, height: 60)
-                .liquidGlass(.ultraThin, in: RoundedRectangle(cornerRadius: 8))
+                .trueGlass(cornerRadius: 8, intensity: .ultraThin)
             }
             
             Button(action: {
@@ -764,7 +760,7 @@ struct ChatWindow: View {
         Circle()
             .fill(Color.clear)
             .frame(width: 24, height: 24)
-            .liquidGlass(.thin, in: Circle())
+            .trueGlass(cornerRadius: 12, intensity: .thin)
             .overlay(
                 // 减号图标 - 调整颜色和字体以匹配其他按钮
                 Text("−")
@@ -789,7 +785,7 @@ struct ChatWindow: View {
             inputTextEditor
         }
         .frame(minHeight: 42, maxHeight: 100) // 🔧 设置合理的高度范围
-        .liquidGlass(.regular, in: RoundedRectangle(cornerRadius: 21, style: .continuous), isInteractive: true)
+        .trueGlass(cornerRadius: 21, intensity: .regular)
         .overlay(inputBorder)
         .onTapGesture {
             isInputFocused = true
@@ -847,11 +843,10 @@ struct ChatWindow: View {
                 .font(.system(size: 20, weight: .medium))
                 .foregroundColor(isDisabled ? .secondary : softBlue)
                 .frame(width: 32, height: 32)
-                .liquidGlass(
-                    isDisabled ? .ultraThin : .thin,
-                    in: Circle(),
-                    tint: isDisabled ? nil : softBlue.opacity(0.05),
-                    isInteractive: !isDisabled
+                .trueGlass(
+                    cornerRadius: 16,
+                    intensity: isDisabled ? .ultraThin : .thin,
+                    tint: isDisabled ? nil : softBlue.opacity(0.05)
                 )
         }
         .buttonStyle(.plain)
@@ -939,7 +934,7 @@ struct ChatWindow: View {
         }
         .buttonStyle(.plain)
         .frame(width: 36, height: 36)
-        .liquidGlass(.thin, in: Circle(), tint: softBlue.opacity(0.05))
+        .trueGlass(cornerRadius: 18, intensity: .thin, tint: softBlue.opacity(0.05))
         .fileImporter(
             isPresented: $vm.showFileImporter,
             allowedContentTypes: [.image, .pdf],
@@ -995,7 +990,7 @@ struct ChatWindow: View {
                     }
                 }
                 .frame(width: 50, height: 50)
-                .liquidGlass(.ultraThin, in: RoundedRectangle(cornerRadius: 8))
+                .trueGlass(cornerRadius: 8, intensity: .ultraThin)
             }
             
             Button(action: {
