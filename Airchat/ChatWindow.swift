@@ -26,6 +26,14 @@ struct ChatWindow: View {
             // 展开状态的顶部内容（聊天历史），折叠时隐藏
             if !isCollapsed {
                 VStack(spacing: 0) {
+                    // 顶部标题栏
+                    headerView
+                    
+                    // 分割线
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.1))
+                        .frame(height: 1)
+                    
                     // 聊天历史区域
                     ScrollView {
                         LazyVStack(spacing: 12) {
@@ -37,9 +45,8 @@ struct ChatWindow: View {
                         .padding(.vertical, 16)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .simpleGlass(cornerRadius: 0, intensity: .ultraThin)
                     
-                    // 分割线
+                    // 底部分割线
                     Rectangle()
                         .fill(Color.primary.opacity(0.1))
                         .frame(height: 1)
@@ -51,7 +58,7 @@ struct ChatWindow: View {
             }
             
             // 底部输入区域（始终存在，高度和内容会变化）
-            VStack(spacing: 8) {
+            VStack(spacing: isCollapsed ? 8 : 4) {
                 // 如果有选中的图片，显示预览（展开模式下显示更多）
                 if !vm.selectedImages.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -64,18 +71,21 @@ struct ChatWindow: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, isCollapsed ? 16 : 12)
                     }
-                    .frame(height: isCollapsed ? 60 : 80)
+                    .frame(height: isCollapsed ? 60 : 60)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 
                 // 统一的输入框区域，在折叠和展开时保持连续性
                 unifiedInputBar
+                    .frame(height: isCollapsed ? nil : 50)
             }
-            .padding(isCollapsed ? 10 : 16)
-            .simpleGlass(cornerRadius: isCollapsed ? 32 : 20, intensity: .thick)
+            .padding(isCollapsed ? 10 : 12)
+            .frame(maxHeight: isCollapsed ? .infinity : 80)
         }
+        // 将玻璃效果应用到整个容器，创建统一的视觉效果
+        .simpleGlass(cornerRadius: isCollapsed ? 32 : 20, intensity: .thick)
         .background(Color.clear)
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
@@ -96,6 +106,23 @@ struct ChatWindow: View {
                     }
                 }
             }
+        }
+        .sheet(isPresented: $vm.showModelSelection) {
+            ModelSelectionView(
+                modelConfig: vm.modelConfig,
+                isPresented: $vm.showModelSelection
+            )
+        }
+        .sheet(isPresented: $vm.showAPIKeyInput) {
+            APIKeyInputView(isPresented: $vm.showAPIKeyInput)
+        }
+        .alert("清空聊天记录", isPresented: $vm.showClearConfirmation) {
+            Button("取消", role: .cancel) { }
+            Button("清空", role: .destructive) {
+                vm.clearChat()
+            }
+        } message: {
+            Text("确定要清空所有聊天记录吗？此操作无法撤销。")
         }
     }
     
@@ -1160,7 +1187,7 @@ struct ChatWindow: View {
                 )
                 .textFieldStyle(.plain)
                 .font(.system(size: isCollapsed ? 14 : 15))
-                .lineLimit(isCollapsed ? 1...2 : 1...4)
+                .lineLimit(isCollapsed ? 1...2 : 1...3)
                 .focusable()
                 .focused(isCollapsed ? $isCollapsedInputFocused : $isInputFocused)
                 .focusEffectDisabled()
