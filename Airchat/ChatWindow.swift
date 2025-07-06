@@ -1047,7 +1047,7 @@ struct ChatWindow: View {
     
     // 统一的输入框实现，支持连续变形动画
     private var unifiedInputBar: some View {
-        HStack(spacing: isCollapsed ? 8 : 12) {
+        HStack(spacing: isCollapsed ? 4 : 0) {
             // 左侧功能按钮组
             HStack(spacing: isCollapsed ? 8 : 12) {
                 // 添加按钮
@@ -1061,23 +1061,51 @@ struct ChatWindow: View {
                 .buttonStyle(.plain)
                 
                 // 网络搜索按钮
-                if !isCollapsed || vm.supportsWebSearch {
+                Button(action: {
+                    if vm.supportsWebSearch {
+                        vm.toggleWebSearch()
+                    }
+                }) {
+                    Image(systemName: vm.isWebSearchEnabled ? "globe.badge.chevron.backward" : "globe")
+                        .font(.system(size: isCollapsed ? 14 : 16, weight: .medium))
+                        .foregroundColor(
+                            vm.supportsWebSearch 
+                                ? (vm.isWebSearchEnabled ? softBlue : .primary.opacity(0.7))
+                                : .secondary
+                        )
+                        .opacity(vm.supportsWebSearch ? 1.0 : 0.5)
+                }
+                .buttonStyle(.plain)
+                .disabled(!vm.supportsWebSearch)
+                .help(vm.supportsWebSearch 
+                      ? (vm.isWebSearchEnabled ? "关闭联网搜索" : "开启联网搜索")
+                      : "当前模型不支持联网搜索")
+                
+                // 展开状态下的额外功能按钮
+                if !isCollapsed {
+                    // 附件按钮
                     Button(action: {
-                        if vm.supportsWebSearch {
-                            vm.toggleWebSearch()
-                        }
+                        vm.showFileImporter = true
                     }) {
-                        Image(systemName: vm.isWebSearchEnabled ? "globe.badge.chevron.backward" : "globe")
-                            .font(.system(size: isCollapsed ? 14 : 16, weight: .medium))
-                            .foregroundColor(
-                                vm.supportsWebSearch 
-                                    ? (vm.isWebSearchEnabled ? softBlue : .primary.opacity(0.7))
-                                    : .secondary
-                            )
-                            .opacity(vm.supportsWebSearch ? 1.0 : 0.5)
+                        Image(systemName: "paperclip")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .disabled(!vm.supportsWebSearch)
+                    .transition(.asymmetric(
+                        insertion: .scale.combined(with: .opacity),
+                        removal: .scale.combined(with: .opacity)
+                    ))
+                    
+                    // 刷新按钮
+                    Button(action: {
+                        // 可以添加刷新功能
+                    }) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
                     .transition(.asymmetric(
                         insertion: .scale.combined(with: .opacity),
                         removal: .scale.combined(with: .opacity)
@@ -1101,22 +1129,25 @@ struct ChatWindow: View {
                     ))
                 }
                 
-                // 展开状态下的折叠按钮
+                // 模型名称显示（展开状态）
                 if !isCollapsed {
-                    Button(action: {
-                        WindowManager.shared.toggleWindowState(collapsed: true)
-                    }) {
-                        Image(systemName: "minus.circle")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.primary.opacity(0.7))
-                    }
-                    .buttonStyle(.plain)
-                    .help("折叠窗口")
-                    .transition(.asymmetric(
-                        insertion: .scale.combined(with: .opacity),
-                        removal: .scale.combined(with: .opacity)
-                    ))
+                    Text(vm.modelConfig.selectedModel.name)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .onTapGesture {
+                            vm.showModelSelection = true
+                        }
+                        .transition(.asymmetric(
+                            insertion: .scale.combined(with: .opacity),
+                            removal: .scale.combined(with: .opacity)
+                        ))
                 }
+            }
+            .padding(.leading, isCollapsed ? 12 : 16)
+            
+            // 中间区域布局调整
+            if isCollapsed {
+                Spacer()
             }
             
             // 中间的输入框区域
@@ -1149,61 +1180,80 @@ struct ChatWindow: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                
-                // 右侧按钮组
-                HStack(spacing: isCollapsed ? 6 : 8) {
-                    // 语音按钮
-                    Button(action: {
-                        vm.toggleVoiceRecording()
-                    }) {
-                        Image(systemName: vm.isRecording ? "mic.fill" : "mic")
-                            .font(.system(size: isCollapsed ? 14 : 16, weight: .medium))
-                            .foregroundColor(vm.isRecording ? .red : .secondary)
-                            .scaleEffect(vm.isRecording ? 1.1 : 1.0)
-                            .animation(.easeInOut(duration: 0.2), value: vm.isRecording)
-                    }
-                    .buttonStyle(.plain)
-                    .onLongPressGesture {
-                        vm.switchSpeechRecognitionMethod()
-                    }
-                    .help("点击录音，长按切换识别方式")
-                    
-                    // 发送按钮
-                    Button(action: {
-                        let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
-                        if hasContent {
-                            if isCollapsed {
-                                WindowManager.shared.toggleWindowState(collapsed: false)
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    vm.send()
-                                }
-                            } else {
-                                vm.send()
-                            }
-                        }
-                    }) {
-                        let canSend = !vm.composing.isEmpty || !vm.selectedImages.isEmpty
-                        Image(systemName: canSend ? "arrow.up.circle.fill" : "arrow.up.circle")
-                            .font(.system(size: isCollapsed ? 18 : 20, weight: .medium))
-                            .foregroundColor(canSend ? softBlue : .secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(vm.composing.isEmpty && vm.selectedImages.isEmpty)
-                }
             }
-            .padding(.horizontal, isCollapsed ? 12 : 16)
-            .padding(.vertical, isCollapsed ? 8 : 12)
+            .padding(.horizontal, isCollapsed ? 8 : 16)
+            .padding(.vertical, isCollapsed ? 6 : 12)
             .background(
-                RoundedRectangle(cornerRadius: isCollapsed ? 24 : 16, style: .continuous)
+                RoundedRectangle(cornerRadius: isCollapsed ? 20 : 16, style: .continuous)
                     .fill(.regularMaterial.opacity(0.5))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: isCollapsed ? 24 : 16, style: .continuous)
+                RoundedRectangle(cornerRadius: isCollapsed ? 20 : 16, style: .continuous)
                     .strokeBorder(
                         (isCollapsed ? isCollapsedInputFocused : isInputFocused) ? softBlue.opacity(0.3) : Color.white.opacity(0.1),
                         lineWidth: 0.5
                     )
             )
+            
+            if isCollapsed {
+                Spacer()
+            }
+            
+            // 右侧按钮组
+            HStack(spacing: isCollapsed ? 6 : 12) {
+                // 折叠状态下显示模型名称
+                if isCollapsed {
+                    Text(vm.modelConfig.selectedModel.name)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .onTapGesture {
+                            vm.showModelSelection = true
+                        }
+                        .transition(.asymmetric(
+                            insertion: .scale.combined(with: .opacity),
+                            removal: .scale.combined(with: .opacity)
+                        ))
+                }
+                
+                // 语音按钮
+                Button(action: {
+                    vm.toggleVoiceRecording()
+                }) {
+                    Image(systemName: vm.isRecording ? "mic.fill" : "mic")
+                        .font(.system(size: isCollapsed ? 14 : 16, weight: .medium))
+                        .foregroundColor(vm.isRecording ? .red : .secondary)
+                        .scaleEffect(vm.isRecording ? 1.1 : 1.0)
+                        .animation(.easeInOut(duration: 0.2), value: vm.isRecording)
+                }
+                .buttonStyle(.plain)
+                .onLongPressGesture {
+                    vm.switchSpeechRecognitionMethod()
+                }
+                .help("点击录音，长按切换识别方式")
+                
+                // 发送按钮
+                Button(action: {
+                    let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
+                    if hasContent {
+                        if isCollapsed {
+                            WindowManager.shared.toggleWindowState(collapsed: false)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                vm.send()
+                            }
+                        } else {
+                            vm.send()
+                        }
+                    }
+                }) {
+                    let canSend = !vm.composing.isEmpty || !vm.selectedImages.isEmpty
+                    Image(systemName: canSend ? "arrow.up.circle.fill" : "arrow.up.circle")
+                        .font(.system(size: isCollapsed ? 18 : 20, weight: .medium))
+                        .foregroundColor(canSend ? softBlue : .secondary)
+                }
+                .buttonStyle(.plain)
+                .disabled(vm.composing.isEmpty && vm.selectedImages.isEmpty)
+            }
+            .padding(.trailing, isCollapsed ? 12 : 16)
         }
         .animation(.easeInOut(duration: 0.3), value: isCollapsed)
         .fileImporter(
