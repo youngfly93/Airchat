@@ -21,8 +21,8 @@ struct ChatWindow: View {
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
     
     var body: some View {
-        // 使用 GlassEffectContainer 优化性能
-        GlassEffectContainer(spacing: 20) {
+        // 使用 VStack 替代 GlassEffectContainer
+        VStack(spacing: 20) {
             Group {
                 if isCollapsed {
                     collapsedView
@@ -191,7 +191,7 @@ struct ChatWindow: View {
             }
             .frame(width: 480) // 🔧 设置固定宽度
             .frame(minHeight: 64) // 🔧 设置最小高度，允许根据内容动态调整
-            .trueGlass(cornerRadius: 32, intensity: .regular)
+            .simpleGlass(cornerRadius: 32, intensity: .regular)
             .overlay(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .strokeBorder(
@@ -268,7 +268,7 @@ struct ChatWindow: View {
         }
         .frame(width: 360)
         .frame(minHeight: 520, maxHeight: 550) // 🔧 降低最大高度，保持更紧凑的界面
-        .trueGlass(cornerRadius: 20, intensity: .regular)
+        .simpleGlass(cornerRadius: 20, intensity: .regular)
         // 简化阴影以提高性能
         .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
         .focusable()
@@ -347,7 +347,7 @@ struct ChatWindow: View {
                     .frame(height: 32)
                 }
                 .buttonStyle(.plain)
-                .trueGlass(cornerRadius: 10, intensity: .thin)
+                .simpleGlass(cornerRadius: 10, intensity: .thin)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
@@ -363,7 +363,7 @@ struct ChatWindow: View {
                 }
                 .buttonStyle(.plain)
                 .frame(width: 32, height: 32)
-                .trueGlass(cornerRadius: 10, intensity: .thin)
+                .simpleGlass(cornerRadius: 10, intensity: .thin)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
@@ -555,7 +555,7 @@ struct ChatWindow: View {
             .padding(.trailing, 16)
         }
         .frame(minHeight: 50, maxHeight: 80) // 🔧 降低最大高度，保持更紧凑的界面
-        .trueGlass(cornerRadius: 25, intensity: .regular)
+        .simpleGlass(cornerRadius: 25, intensity: .regular)
         .overlay(
             RoundedRectangle(cornerRadius: 25, style: .continuous)
                 .strokeBorder(
@@ -630,7 +630,7 @@ struct ChatWindow: View {
                     }
                 }
                 .frame(width: 60, height: 60)
-                .trueGlass(cornerRadius: 8, intensity: .ultraThin)
+                .simpleGlass(cornerRadius: 8, intensity: .ultraThin)
             }
             
             Button(action: {
@@ -760,7 +760,7 @@ struct ChatWindow: View {
         Circle()
             .fill(Color.clear)
             .frame(width: 24, height: 24)
-            .trueGlass(cornerRadius: 12, intensity: .thin)
+            .simpleGlass(cornerRadius: 12, intensity: .thin)
             .overlay(
                 // 减号图标 - 调整颜色和字体以匹配其他按钮
                 Text("−")
@@ -785,7 +785,7 @@ struct ChatWindow: View {
             inputTextEditor
         }
         .frame(minHeight: 42, maxHeight: 100) // 🔧 设置合理的高度范围
-        .trueGlass(cornerRadius: 21, intensity: .regular)
+        .simpleGlass(cornerRadius: 21, intensity: .regular)
         .overlay(inputBorder)
         .onTapGesture {
             isInputFocused = true
@@ -843,7 +843,7 @@ struct ChatWindow: View {
                 .font(.system(size: 20, weight: .medium))
                 .foregroundColor(isDisabled ? .secondary : softBlue)
                 .frame(width: 32, height: 32)
-                .trueGlass(
+                .simpleGlass(
                     cornerRadius: 16,
                     intensity: isDisabled ? .ultraThin : .thin,
                     tint: isDisabled ? nil : softBlue.opacity(0.05)
@@ -934,7 +934,7 @@ struct ChatWindow: View {
         }
         .buttonStyle(.plain)
         .frame(width: 36, height: 36)
-        .trueGlass(cornerRadius: 18, intensity: .thin, tint: softBlue.opacity(0.05))
+        .simpleGlass(cornerRadius: 18, intensity: .thin, tint: softBlue.opacity(0.05))
         .fileImporter(
             isPresented: $vm.showFileImporter,
             allowedContentTypes: [.image, .pdf],
@@ -990,7 +990,7 @@ struct ChatWindow: View {
                     }
                 }
                 .frame(width: 50, height: 50)
-                .trueGlass(cornerRadius: 8, intensity: .ultraThin)
+                .simpleGlass(cornerRadius: 8, intensity: .ultraThin)
             }
             
             Button(action: {
