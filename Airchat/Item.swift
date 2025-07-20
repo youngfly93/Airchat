@@ -56,6 +56,21 @@ enum MessageContent: Codable {
         }
     }
     
+    var lineCount: Int {
+        return displayText.components(separatedBy: .newlines).count
+    }
+    
+    var shouldCompress: Bool {
+        return lineCount > 3 // 超过3行就压缩显示
+    }
+    
+    var compressedSummary: String {
+        let lines = lineCount
+        let text = displayText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let preview = String(text.prefix(30)).replacingOccurrences(of: "\n", with: " ")
+        return "[多行文本 #\(lines)行] \(preview)..."
+    }
+    
     var hasImages: Bool {
         switch self {
         case .text:

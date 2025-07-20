@@ -16,9 +16,34 @@ struct ChatWindow: View {
     @State private var animationProgress: Double = 1.0
     @FocusState private var isInputFocused: Bool
     @FocusState private var isCollapsedInputFocused: Bool
+    @State private var dynamicInputHeight: CGFloat = 64.0 // 动态输入框高度
     
     // 定义更柔和的蓝色
     private let softBlue = Color(red: 0.4, green: 0.6, blue: 0.9)
+    
+    // 计算文本内容所需的高度
+    private func calculateTextHeight(for text: String, fontSize: CGFloat = 15, maxWidth: CGFloat = 320) -> CGFloat {
+        let font = NSFont.systemFont(ofSize: fontSize)
+        let textStorage = NSTextStorage(string: text.isEmpty ? "询问任何问题…" : text)
+        let textContainer = NSTextContainer(size: NSSize(width: maxWidth, height: CGFloat.greatestFiniteMagnitude))
+        let layoutManager = NSLayoutManager()
+        
+        textStorage.addLayoutManager(layoutManager)
+        layoutManager.addTextContainer(textContainer)
+        
+        textContainer.lineFragmentPadding = 0
+        textContainer.maximumNumberOfLines = 8 // 最多8行
+        
+        let usedRect = layoutManager.usedRect(for: textContainer)
+        let lineHeight = font.ascender - font.descender + font.leading
+        
+        // 计算最终高度：文本高度 + 上下内边距(12) + 最小高度保证
+        let contentHeight = max(lineHeight, usedRect.height)
+        let totalHeight = contentHeight + 24 // 上下padding各12
+        
+        // 限制在64到200像素之间，允许更多文本显示
+        return max(64, min(200, totalHeight))
+    }
     
     var body: some View {
         // 使用连续变形动画，让窗口内容顺滑过渡而不是分离的两个视图
@@ -153,6 +178,10 @@ struct ChatWindow: View {
                 // 使用流畅的变形动画，让内容连续过渡
                 withAnimation(.easeInOut(duration: 0.3)) {
                     isCollapsed = collapsed
+                    // 当切换到折叠状态时，重新计算输入框高度
+                    if collapsed {
+                        dynamicInputHeight = calculateTextHeight(for: vm.composing)
+                    }
                 }
                 
                 // 延迟设置焦点，配合动画时长
@@ -259,7 +288,7 @@ struct ChatWindow: View {
             TextField("询问任何问题…", text: $vm.composing, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: 15))
-                .lineLimit(1...3) // 🔧 添加行数限制，允许多行显示
+                .lineLimit(1...8) // 🔧 最多8行，配合动态高度
                 .focusable()
                 .focused($isCollapsedInputFocused)
                 .focusEffectDisabled()
@@ -316,7 +345,13 @@ struct ChatWindow: View {
             .padding(.trailing, 16)
             }
             .frame(width: 480) // 🔧 设置固定宽度
-            .frame(minHeight: 64) // 🔧 设置最小高度，允许根据内容动态调整
+            .frame(height: dynamicInputHeight) // 🔧 使用动态计算的高度
+            .onChange(of: vm.composing) { oldValue, newValue in
+                // 当文本内容变化时，重新计算高度
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    dynamicInputHeight = calculateTextHeight(for: newValue)
+                }
+            }
             .simpleGlass(cornerRadius: 32, intensity: .regular)
             .overlay(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
@@ -339,9 +374,10 @@ struct ChatWindow: View {
             isCollapsedInputFocused = true
         }
         .onAppear {
-            // 窗口显示时自动聚焦
+            // 窗口显示时自动聚焦并初始化高度
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isCollapsedInputFocused = true
+                dynamicInputHeight = calculateTextHeight(for: vm.composing)
             }
         }
         .onDrop(of: [.fileURL, .image, .png, .jpeg, .tiff], isTargeted: nil) { providers in
@@ -781,25 +817,18 @@ struct ChatWindow: View {
                             .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
                     
-                    // Show main content
-                    Markdown(message.content.displayText)
-                        .markdownTheme(.airchat)
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    // User message content
-                    VStack(alignment: .leading, spacing: 8) {
-                        // Show images if present
-                        if message.content.hasImages {
-                            imageGridView(for: message.content.images)
-                        }
-                        
-                        // Show text if present
-                        let text = message.content.displayText
-                        if !text.isEmpty {
-                            Text(text)
-                        }
+                    // Show main content - 使用压缩显示组件
+                    if message.content.shouldCompress {
+                        CompressibleMessageView(message: message)
+                    } else {
+                        Markdown(message.content.displayText)
+                            .markdownTheme(.airchat)
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                } else {
+                    // User message content - 使用压缩显示组件
+                    CompressibleMessageView(message: message)
                 }
             }
             .padding(12)
