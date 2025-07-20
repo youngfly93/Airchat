@@ -10,8 +10,10 @@ import SwiftUI
 struct APIKeySettingsView: View {
     @State private var apiKey = ""
     @State private var googleApiKey = ""
+    @State private var kimiApiKey = ""
     @State private var isEditingOpenRouter = false
     @State private var isEditingGoogle = false
+    @State private var isEditingKimi = false
     @State private var showingSuccess = false
     @State private var showingError = false
     @State private var errorMessage = ""
@@ -93,6 +95,43 @@ struct APIKeySettingsView: View {
                     .foregroundColor(.secondary)
             }
             
+            Divider()
+            
+            // Kimi API Key Section
+            VStack(spacing: 10) {
+                Text("Kimi API Key (Moonshot AI)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                HStack {
+                    if isEditingKimi {
+                        SecureField("sk-...", text: $kimiApiKey)
+                            .textFieldStyle(.roundedBorder)
+                    } else {
+                        Text(maskedKimiAPIKey)
+                            .foregroundColor(hasKimiAPIKey ? .primary : .secondary)
+                    }
+                    
+                    Button(isEditingKimi ? "保存" : (hasKimiAPIKey ? "更改" : "设置")) {
+                        if isEditingKimi {
+                            saveKimiAPIKey()
+                        } else {
+                            startEditingKimi()
+                        }
+                    }
+                    
+                    if isEditingKimi {
+                        Button("取消") {
+                            cancelEditingKimi()
+                        }
+                    }
+                }
+                
+                Text("您可以在 [Kimi开放平台](https://platform.moonshot.cn/console/api-keys) 获取 API Key")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
             Spacer().frame(height: 10)
             
             HStack {
@@ -107,6 +146,14 @@ struct APIKeySettingsView: View {
                 if hasGoogleAPIKey && !isEditingGoogle {
                     Button("删除 Google Key") {
                         deleteGoogleAPIKey()
+                    }
+                    .foregroundColor(.red)
+                    .font(.caption)
+                }
+                
+                if hasKimiAPIKey && !isEditingKimi {
+                    Button("删除 Kimi Key") {
+                        deleteKimiAPIKey()
                     }
                     .foregroundColor(.red)
                     .font(.caption)
@@ -136,6 +183,11 @@ struct APIKeySettingsView: View {
     
     private var hasGoogleAPIKey: Bool {
         KeychainHelper.shared.googleApiKey != nil && !KeychainHelper.shared.googleApiKey!.isEmpty
+    }
+    
+    private var hasKimiAPIKey: Bool {
+        let kimiAPI = KimiAPI()
+        return kimiAPI.hasAPIKey()
     }
     
     private var maskedAPIKey: String {
@@ -168,12 +220,29 @@ struct APIKeySettingsView: View {
         }
     }
     
+    private var maskedKimiAPIKey: String {
+        let kimiAPI = KimiAPI()
+        guard let key = kimiAPI.getAPIKey(), !key.isEmpty else {
+            return "未设置 API Key"
+        }
+        
+        // Show first 6 and last 4 characters
+        if key.count > 10 {
+            let prefix = key.prefix(6)
+            let suffix = key.suffix(4)
+            return "\(prefix)...\(suffix)"
+        } else {
+            return "sk-..."
+        }
+    }
+    
     private func loadCurrentAPIKeys() {
         Task {
-            let (openRouterKey, googleKey) = await Task.detached {
+            let (openRouterKey, googleKey, kimiKey) = await Task.detached {
                 let openRouter = KeychainHelper.shared.apiKey
                 let google = KeychainHelper.shared.googleApiKey
-                return (openRouter, google)
+                let kimi = KimiAPI().getAPIKey()
+                return (openRouter, google, kimi)
             }.value
             
             await MainActor.run {
@@ -182,6 +251,9 @@ struct APIKeySettingsView: View {
                 }
                 if let key = googleKey {
                     googleApiKey = key
+                }
+                if let key = kimiKey {
+                    kimiApiKey = key
                 }
             }
         }
@@ -282,6 +354,58 @@ struct APIKeySettingsView: View {
             
             await MainActor.run {
                 googleApiKey = ""
+            }
+        }
+    }
+    
+    // Kimi API Key methods
+    private func startEditingKimi() {
+        isEditingKimi = true
+        if hasKimiAPIKey {
+            kimiApiKey = KimiAPI().getAPIKey() ?? ""
+        }
+    }
+    
+    private func cancelEditingKimi() {
+        isEditingKimi = false
+        kimiApiKey = ""
+    }
+    
+    private func saveKimiAPIKey() {
+        guard !kimiApiKey.isEmpty else {
+            errorMessage = "Kimi API Key 不能为空"
+            showingError = true
+            return
+        }
+        
+        let keyToSave = kimiApiKey
+        
+        Task {
+            let success = await Task.detached {
+                KimiAPI().setAPIKey(keyToSave)
+            }.value
+            
+            await MainActor.run {
+                if success {
+                    isEditingKimi = false
+                    showingSuccess = true
+                    kimiApiKey = ""
+                } else {
+                    errorMessage = "保存 Kimi API Key 失败，请重试"
+                    showingError = true
+                }
+            }
+        }
+    }
+    
+    private func deleteKimiAPIKey() {
+        Task {
+            await Task.detached {
+                _ = KimiAPI().setAPIKey("")
+            }.value
+            
+            await MainActor.run {
+                kimiApiKey = ""
             }
         }
     }

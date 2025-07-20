@@ -122,6 +122,36 @@ class ModelConfig: ObservableObject {
                 supportsFiles: false,
                 contextWindow: 131072,
                 pricing: AIModel.ModelPricing(input: 0.64, output: 0.64)
+            ),
+            AIModel(
+                id: "moonshot-v1-8k",
+                name: "Kimi 8K",
+                provider: "Moonshot AI",
+                description: "Kimi模型，支持中英文对话（8K上下文）",
+                supportsReasoning: false,
+                supportsFiles: false,
+                contextWindow: 8000,
+                pricing: AIModel.ModelPricing(input: 12.0, output: 12.0)
+            ),
+            AIModel(
+                id: "moonshot-v1-32k",
+                name: "Kimi 32K",
+                provider: "Moonshot AI",
+                description: "Kimi模型，支持中英文对话（32K上下文）",
+                supportsReasoning: false,
+                supportsFiles: false,
+                contextWindow: 32000,
+                pricing: AIModel.ModelPricing(input: 24.0, output: 24.0)
+            ),
+            AIModel(
+                id: "moonshot-v1-128k",
+                name: "Kimi 128K",
+                provider: "Moonshot AI",
+                description: "Kimi模型，支持中英文对话（128K上下文）",
+                supportsReasoning: false,
+                supportsFiles: false,
+                contextWindow: 128000,
+                pricing: AIModel.ModelPricing(input: 60.0, output: 60.0)
             )
         ]
         self.availableModels = models

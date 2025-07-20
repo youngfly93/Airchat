@@ -13,6 +13,10 @@ final class GeminiOfficialAPI {
     }
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models"
     
+    func hasAPIKey() -> Bool {
+        return !apiKey.isEmpty
+    }
+    
     // Gemini API 请求结构
     struct GeminiRequest: Codable {
         let contents: [Content]

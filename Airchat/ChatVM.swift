@@ -43,6 +43,7 @@ final class ChatVM: NSObject, ObservableObject {
     
     private let api = ArkChatAPI()
     private let geminiAPI = GeminiOfficialAPI()
+    private let kimiAPI = KimiAPI()
     private var scrollUpdateTimer: Timer?
     private let pasteboardMonitor = PasteboardMonitor()
     let modelConfig = ModelConfig()
@@ -344,8 +345,17 @@ final class ChatVM: NSObject, ObservableObject {
     func send() {
         guard !composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedImages.isEmpty else { return }
         
-        // Check if API key is set
-        if KeychainHelper.shared.apiKey == nil || KeychainHelper.shared.apiKey?.isEmpty == true {
+        // Check if API key is set based on selected model provider
+        let needsAPIKey: Bool
+        if modelConfig.selectedModel.provider == "Google Official" {
+            needsAPIKey = !geminiAPI.hasAPIKey()
+        } else if modelConfig.selectedModel.provider == "Moonshot AI" {
+            needsAPIKey = !kimiAPI.hasAPIKey()
+        } else {
+            needsAPIKey = KeychainHelper.shared.apiKey == nil || KeychainHelper.shared.apiKey?.isEmpty == true
+        }
+        
+        if needsAPIKey {
             showAPIKeyInput = true
             return
         }
@@ -387,6 +397,13 @@ final class ChatVM: NSObject, ObservableObject {
                     // 使用官方 Gemini API，传递具体的模型名称
                     let modelName = modelConfig.selectedModel.id.replacingOccurrences(of: "google-official/", with: "")
                     stream = try await geminiAPI.send(messages: messages, stream: true, model: modelName)
+                } else if modelConfig.selectedModel.provider == "Moonshot AI" {
+                    // 使用 Kimi API
+                    stream = kimiAPI.streamChat(
+                        messages: messages, 
+                        model: modelConfig.selectedModel.id,
+                        webSearchEnabled: isWebSearchEnabled
+                    )
                 } else {
                     // 使用 OpenRouter API
                     let baseModelId = modelConfig.selectedModel.id
