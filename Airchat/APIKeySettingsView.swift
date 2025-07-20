@@ -19,7 +19,8 @@ struct APIKeySettingsView: View {
     @State private var errorMessage = ""
     
     var body: some View {
-        VStack(spacing: 25) {
+        ScrollView {
+            VStack(spacing: 25) {
             Text("API Key 设置")
                 .font(.headline)
             
@@ -159,9 +160,11 @@ struct APIKeySettingsView: View {
                     .font(.caption)
                 }
             }
+            }
         }
         .padding(30)
-        .frame(width: 450)
+        .frame(width: 500, height: 600)
+        .scrollContentBackground(.hidden)
         .onAppear {
             loadCurrentAPIKeys()
         }
