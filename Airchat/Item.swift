@@ -61,8 +61,8 @@ enum MessageContent: Codable {
     }
     
     var shouldCompress: Bool {
-        let textLength = displayText.trimmingCharacters(in: .whitespacesAndNewlines).count
-        return textLength > 200 || lineCount > 3 // 超过200字符或3行就压缩显示
+        // 禁用消息内容的压缩，只在输入框中使用压缩功能
+        return false
     }
     
     var compressedSummary: String {

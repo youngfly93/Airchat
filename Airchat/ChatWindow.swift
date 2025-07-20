@@ -294,6 +294,9 @@ struct ChatWindow: View {
                     }
                 }
             )
+            .onAppear {
+                print("📱 ChatWindow: CompressibleInputView 已出现在折叠状态")
+            }
             
             Spacer()
             
@@ -353,6 +356,9 @@ struct ChatWindow: View {
                     )
             )
             .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+        }
+        .onAppear {
+            print("📱 ChatWindow: collapsedView 已出现")
         }
         .fileImporter(
             isPresented: $vm.showFileImporter,
@@ -804,18 +810,21 @@ struct ChatWindow: View {
                             .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
                     
-                    // Show main content - 使用压缩显示组件
-                    if message.content.shouldCompress {
-                        CompressibleMessageView(message: message)
-                    } else {
-                        Markdown(message.content.displayText)
-                            .markdownTheme(.airchat)
-                            .textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    // Show main content - 直接显示完整内容
+                    Markdown(message.content.displayText)
+                        .markdownTheme(.airchat)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    // User message content - 使用压缩显示组件
-                    CompressibleMessageView(message: message)
+                    // User message content - 直接显示完整内容
+                    if message.content.hasImages {
+                        // 多模态内容显示
+                        MultimodalContentView(content: message.content, role: message.role)
+                    } else {
+                        Text(message.content.displayText)
+                            .font(.system(size: 14))
+                            .textSelection(.enabled)
+                    }
                 }
             }
             .padding(12)
@@ -1237,34 +1246,27 @@ struct ChatWindow: View {
             
             // 中间的输入框区域
             HStack(spacing: 8) {
-                // 输入文本框
-                TextField(
-                    isCollapsed ? "询问任何问题…" : "输入消息...", 
-                    text: $vm.composing, 
-                    axis: .vertical
-                )
-                .textFieldStyle(.plain)
-                .font(.system(size: isCollapsed ? 14 : 15))
-                .lineLimit(isCollapsed ? 1...2 : 1...3)
-                .focusable()
-                .focused($isInputFocused)
-                .focusEffectDisabled()
-                .onSubmit {
-                    let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
-                    if hasContent {
-                        if isCollapsed {
-                            // 折叠状态下先展开再发送
-                            WindowManager.shared.toggleWindowState(collapsed: false)
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                // 压缩输入文本框
+                CompressibleInputView(
+                    text: $vm.composing,
+                    placeholder: isCollapsed ? "询问任何问题…" : "输入消息...",
+                    onSubmit: {
+                        let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
+                        if hasContent {
+                            if isCollapsed {
+                                WindowManager.shared.toggleWindowState(collapsed: false)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    vm.send()
+                                }
+                            } else {
                                 vm.send()
                             }
-                        } else {
-                            // 展开状态下直接发送
-                            vm.send()
                         }
                     }
+                )
+                .onAppear {
+                    print("📱 ChatWindow: CompressibleInputView 已出现在统一输入栏")
                 }
-                .frame(maxWidth: .infinity)
             }
             .padding(.horizontal, isCollapsed ? 8 : 16)
             .padding(.vertical, isCollapsed ? 6 : 12)
