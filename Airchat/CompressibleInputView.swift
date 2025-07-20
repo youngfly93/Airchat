@@ -18,16 +18,24 @@ struct CompressibleInputView: View {
         return text.components(separatedBy: .newlines).count
     }
     
+    private var textLength: Int {
+        return text.trimmingCharacters(in: .whitespacesAndNewlines).count
+    }
+    
     private var shouldCompress: Bool {
-        // 当有多行文本且未手动展开时显示压缩版本
-        return lineCount > 2 && !isExpanded
+        // 当文本很长（超过100字符）或有多行且未手动展开时显示压缩版本
+        return (textLength > 100 || lineCount > 2) && !isExpanded
     }
     
     private var compressedSummary: String {
-        let lines = lineCount
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let preview = String(cleanText.prefix(30)).replacingOccurrences(of: "\n", with: " ")
-        return "[输入 #\(lines)行] \(preview)..."
+        let preview = String(cleanText.prefix(40)).replacingOccurrences(of: "\n", with: " ")
+        
+        if lineCount > 2 {
+            return "[输入 #\(lineCount)行] \(preview)..."
+        } else {
+            return "[长文本 \(textLength)字符] \(preview)..."
+        }
     }
     
     var body: some View {
@@ -92,16 +100,16 @@ struct CompressibleInputView: View {
                     onSubmit()
                 }
                 .onChange(of: isTextFieldFocused) { _, newValue in
-                    if !newValue && lineCount > 2 {
-                        // 失去焦点时，如果是多行文本，自动压缩
+                    if !newValue && (textLength > 100 || lineCount > 2) {
+                        // 失去焦点时，如果是长文本或多行文本，自动压缩
                         withAnimation(.easeInOut(duration: 0.2)) {
                             isExpanded = false
                         }
                     }
                 }
             
-            // 如果是多行文本且已展开，显示折叠按钮
-            if lineCount > 2 && isExpanded && !isTextFieldFocused {
+            // 如果是长文本或多行文本且已展开，显示折叠按钮
+            if (textLength > 100 || lineCount > 2) && isExpanded && !isTextFieldFocused {
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isExpanded = false

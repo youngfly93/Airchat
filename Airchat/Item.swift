@@ -61,14 +61,20 @@ enum MessageContent: Codable {
     }
     
     var shouldCompress: Bool {
-        return lineCount > 3 // 超过3行就压缩显示
+        let textLength = displayText.trimmingCharacters(in: .whitespacesAndNewlines).count
+        return textLength > 200 || lineCount > 3 // 超过200字符或3行就压缩显示
     }
     
     var compressedSummary: String {
         let lines = lineCount
         let text = displayText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let preview = String(text.prefix(30)).replacingOccurrences(of: "\n", with: " ")
-        return "[多行文本 #\(lines)行] \(preview)..."
+        let preview = String(text.prefix(40)).replacingOccurrences(of: "\n", with: " ")
+        
+        if lines > 3 {
+            return "[多行文本 #\(lines)行] \(preview)..."
+        } else {
+            return "[长文本 \(text.count)字符] \(preview)..."
+        }
     }
     
     var hasImages: Bool {
