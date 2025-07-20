@@ -99,8 +99,9 @@ struct AirchatApp: App {
                         Label("API Key", systemImage: "key.fill")
                     }
             }
-            .frame(width: 400, height: 200)
+            .frame(width: 550, height: 650)
         }
+        .windowResizability(.contentSize)
     }
 }
 

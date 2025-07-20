@@ -162,8 +162,8 @@ struct APIKeySettingsView: View {
             }
             }
         }
-        .padding(30)
-        .frame(width: 500, height: 600)
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .scrollContentBackground(.hidden)
         .onAppear {
             loadCurrentAPIKeys()
