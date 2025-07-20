@@ -19,7 +19,8 @@ struct CompressibleInputView: View {
     }
     
     private var shouldCompress: Bool {
-        return lineCount > 3 && !isExpanded && !isTextFieldFocused
+        // 当有多行文本且未手动展开时显示压缩版本
+        return lineCount > 2 && !isExpanded
     }
     
     private var compressedSummary: String {
@@ -91,7 +92,7 @@ struct CompressibleInputView: View {
                     onSubmit()
                 }
                 .onChange(of: isTextFieldFocused) { _, newValue in
-                    if !newValue && lineCount > 3 {
+                    if !newValue && lineCount > 2 {
                         // 失去焦点时，如果是多行文本，自动压缩
                         withAnimation(.easeInOut(duration: 0.2)) {
                             isExpanded = false
@@ -100,7 +101,7 @@ struct CompressibleInputView: View {
                 }
             
             // 如果是多行文本且已展开，显示折叠按钮
-            if lineCount > 3 && isExpanded && !isTextFieldFocused {
+            if lineCount > 2 && isExpanded && !isTextFieldFocused {
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isExpanded = false
