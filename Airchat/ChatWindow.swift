@@ -138,6 +138,15 @@ struct ChatWindow: View {
         // 将玻璃效果应用到整个容器，创建统一的视觉效果
         .simpleGlass(cornerRadius: isCollapsed ? 32 : 20, intensity: .thick)
         .background(Color.clear)
+        .focusable(true)
+        .onKeyPress { press in
+            // 统一的键盘事件处理
+            if press.key == .init("v") && press.modifiers.contains(.command) {
+                vm.handlePaste()
+                return .handled
+            }
+            return .ignored
+        }
         .onReceive(NotificationCenter.default.publisher(for: .windowStateChanged)) { notification in
             if let userInfo = notification.userInfo,
                let collapsed = userInfo["isCollapsed"] as? Bool {
@@ -318,15 +327,6 @@ struct ChatWindow: View {
             )
             .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
         }
-        .focusable()
-        .focusEffectDisabled()
-        .onKeyPress { press in
-            if press.key == .init("v") && press.modifiers.contains(.command) {
-                vm.handlePaste()
-                return .handled
-            }
-            return .ignored
-        }
         .fileImporter(
             isPresented: $vm.showFileImporter,
             allowedContentTypes: [.image, .pdf],
@@ -388,15 +388,6 @@ struct ChatWindow: View {
         .simpleGlass(cornerRadius: 20, intensity: .regular)
         // 简化阴影以提高性能
         .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
-        .focusable()
-        .focusEffectDisabled()
-        .onKeyPress { press in
-            if press.key == .init("v") && press.modifiers.contains(.command) {
-                vm.handlePaste()
-                return .handled
-            }
-            return .ignored
-        }
         .onTapGesture {
             // 点击其他区域时，如果输入框为空则重置焦点状态
             if vm.composing.isEmpty {

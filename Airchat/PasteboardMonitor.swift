@@ -38,13 +38,37 @@ class PasteboardMonitor: ObservableObject {
     
     func getImageFromPasteboard() -> NSImage? {
         let pasteboard = NSPasteboard.general
-        let imageTypes: [NSPasteboard.PasteboardType] = [.tiff, .png]
         
+        // 支持更多图片格式
+        let imageTypes: [NSPasteboard.PasteboardType] = [
+            .tiff,
+            .png,
+            NSPasteboard.PasteboardType("public.jpeg"),
+            NSPasteboard.PasteboardType("public.jpg"),
+            NSPasteboard.PasteboardType("public.heic"),
+            NSPasteboard.PasteboardType("public.heif"),
+            NSPasteboard.PasteboardType("com.compuserve.gif"),
+            NSPasteboard.PasteboardType("public.webp"),
+            NSPasteboard.PasteboardType("public.image")
+        ]
+        
+        // 尝试匹配支持的图片类型
         if let type = pasteboard.availableType(from: imageTypes),
            let imageData = pasteboard.data(forType: type),
            let image = NSImage(data: imageData) {
             return image
         }
+        
+        // 如果上述方法失败，尝试通过文件URL获取图片
+        if pasteboard.canReadItem(withDataConformingToTypes: [NSPasteboard.PasteboardType.fileURL.rawValue]) {
+            if let fileURL = pasteboard.readObjects(forClasses: [NSURL.self], options: nil)?.first as? URL {
+                let imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "heic", "heif", "webp"]
+                if imageExtensions.contains(fileURL.pathExtension.lowercased()) {
+                    return NSImage(contentsOf: fileURL)
+                }
+            }
+        }
+        
         return nil
     }
     
