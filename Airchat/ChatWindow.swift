@@ -15,7 +15,6 @@ struct ChatWindow: View {
     @State private var isCollapsed = false
     @State private var animationProgress: Double = 1.0
     @FocusState private var isInputFocused: Bool
-    @FocusState private var isCollapsedInputFocused: Bool
     @State private var dynamicInputHeight: CGFloat = 64.0 // 动态输入框高度
     
     // 定义更柔和的蓝色
@@ -185,11 +184,7 @@ struct ChatWindow: View {
                 }
                 
                 // 延迟设置焦点，配合动画时长
-                if collapsed {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                        isCollapsedInputFocused = true
-                    }
-                } else {
+                if !collapsed {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                         isInputFocused = true
                     }
@@ -284,15 +279,11 @@ struct ChatWindow: View {
             
             Spacer()
             
-            // 中间输入框 - 支持多行文本
-            TextField("询问任何问题…", text: $vm.composing, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(.system(size: 15))
-                .lineLimit(1...8) // 🔧 最多8行，配合动态高度
-                .focusable()
-                .focused($isCollapsedInputFocused)
-                .focusEffectDisabled()
-                .onSubmit {
+            // 中间输入框 - 支持压缩显示
+            CompressibleInputView(
+                text: $vm.composing,
+                placeholder: "询问任何问题…",
+                onSubmit: {
                     let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
                     if hasContent {
                         // 展开窗口并发送消息
@@ -302,6 +293,7 @@ struct ChatWindow: View {
                         }
                     }
                 }
+            )
             
             Spacer()
             
@@ -356,7 +348,7 @@ struct ChatWindow: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .strokeBorder(
-                        isCollapsedInputFocused ? softBlue.opacity(0.3) : Color.white.opacity(0.1),
+                        Color.white.opacity(0.1),
                         lineWidth: 0.5
                     )
             )
@@ -369,14 +361,9 @@ struct ChatWindow: View {
         ) { result in
             vm.handleFileSelection(result)
         }
-        .onTapGesture {
-            // 点击输入框时聚焦
-            isCollapsedInputFocused = true
-        }
         .onAppear {
-            // 窗口显示时自动聚焦并初始化高度
+            // 窗口显示时初始化高度
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isCollapsedInputFocused = true
                 dynamicInputHeight = calculateTextHeight(for: vm.composing)
             }
         }
@@ -1260,7 +1247,7 @@ struct ChatWindow: View {
                 .font(.system(size: isCollapsed ? 14 : 15))
                 .lineLimit(isCollapsed ? 1...2 : 1...3)
                 .focusable()
-                .focused(isCollapsed ? $isCollapsedInputFocused : $isInputFocused)
+                .focused($isInputFocused)
                 .focusEffectDisabled()
                 .onSubmit {
                     let hasContent = !vm.composing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !vm.selectedImages.isEmpty
@@ -1288,7 +1275,7 @@ struct ChatWindow: View {
             .overlay(
                 RoundedRectangle(cornerRadius: isCollapsed ? 20 : 16, style: .continuous)
                     .strokeBorder(
-                        (isCollapsed ? isCollapsedInputFocused : isInputFocused) ? softBlue.opacity(0.3) : Color.white.opacity(0.1),
+                        isInputFocused ? softBlue.opacity(0.3) : Color.white.opacity(0.1),
                         lineWidth: 0.5
                     )
             )
