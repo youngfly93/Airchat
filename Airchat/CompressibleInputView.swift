@@ -17,6 +17,10 @@ struct CompressibleInputView: View {
     let placeholder: String
     let onSubmit: () -> Void
     
+    // 用于检测粘贴操作
+    @State private var lastTextLength = 0
+    @State private var lastChangeTime = Date()
+    
     // 定时器用于延迟压缩
     @State private var compressionTimer: Timer?
     
@@ -29,10 +33,29 @@ struct CompressibleInputView: View {
     }
     
     private var shouldCompress: Bool {
-        // 调试：降低阈值到5字符便于测试
-        let result = (textLength > 5 || lineCount > 1) && !isExpanded && shouldShowCompressed
-        print("📝 shouldCompress 计算: 文本长度=\(textLength), 行数=\(lineCount), isExpanded=\(isExpanded), shouldShowCompressed=\(shouldShowCompressed), 结果=\(result)")
+        // 只有在检测到粘贴操作后才压缩
+        let result = (textLength > 100 || lineCount > 3) && !isExpanded && shouldShowCompressed
         return result
+    }
+    
+    // 检测是否是粘贴操作
+    private func isPasteOperation(oldText: String, newText: String) -> Bool {
+        let currentTime = Date()
+        let timeDiff = currentTime.timeIntervalSince(lastChangeTime)
+        
+        let oldLength = oldText.count
+        let newLength = newText.count
+        let lengthDiff = newLength - oldLength
+        
+        // 如果在很短时间内（< 0.1秒）增加了大量文本（> 50字符），认为是粘贴操作
+        let isPaste = timeDiff < 0.1 && lengthDiff > 50
+        
+        // 更新最后变化时间
+        lastChangeTime = currentTime
+        
+        print("📝 粘贴检测: 时间差=\(String(format: "%.3f", timeDiff))s, 长度差=\(lengthDiff), 判定为粘贴=\(isPaste)")
+        
+        return isPaste
     }
     
     private var compressedSummary: String {
@@ -91,8 +114,8 @@ struct CompressibleInputView: View {
                     print("📝 CompressibleInputView 出现 - 正常状态")
                 }
                 .onChange(of: text) { oldValue, newValue in
-                    print("📝 onChange 触发: 旧值='\(oldValue)', 新值='\(newValue)'")
-                    handleTextChange(newValue)
+                    print("📝 onChange 触发: 旧值长度=\(oldValue.count), 新值长度=\(newValue.count)")
+                    handleTextChange(oldValue, newValue)
                 }
                 .onDisappear {
                     compressionTimer?.invalidate()
@@ -100,7 +123,7 @@ struct CompressibleInputView: View {
         }
     }
     
-    private func handleTextChange(_ newText: String) {
+    private func handleTextChange(_ oldText: String, _ newText: String) {
         // 取消之前的定时器
         compressionTimer?.invalidate()
         
@@ -115,17 +138,17 @@ struct CompressibleInputView: View {
         
         print("📝 文本变化: 长度=\(newTextLength), 行数=\(newLineCount)")
         
-        if newTextLength <= 5 && newLineCount <= 1 {
-            print("📝 文本太短，取消压缩")
+        if newTextLength <= 100 && newLineCount <= 3 {
+            print("📝 文本未达到压缩阈值，取消压缩")
             shouldShowCompressed = false
             compressedText = ""
             continuationText = ""
             return
         }
         
-        // 如果文本满足压缩条件，启动1秒延迟定时器（调试用）
-        if newTextLength > 5 || newLineCount > 1 {
-            print("📝 文本满足压缩条件，启动1秒定时器")
+        // 只有检测到粘贴操作且文本满足压缩条件，才进行压缩
+        if isPasteOperation(oldText: oldText, newText: newText) && (newTextLength > 100 || newLineCount > 3) {
+            print("📝 检测到粘贴操作且满足压缩条件，启动1秒定时器")
             compressionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
                 print("📝 定时器触发，显示压缩状态")
                 withAnimation(.easeInOut(duration: 0.3)) {
@@ -137,6 +160,8 @@ struct CompressibleInputView: View {
                     shouldShowCompressed = true
                 }
             }
+        } else {
+            print("📝 非粘贴操作或未满足压缩条件，不压缩")
         }
     }
     
