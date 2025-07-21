@@ -162,7 +162,8 @@ struct ChatWindow: View {
         // 将玻璃效果应用到整个容器，创建统一的视觉效果
         .simpleGlass(cornerRadius: isCollapsed ? 32 : 20, intensity: .thick)
         .background(Color.clear)
-        .focusable(true)
+        .focusable(false)
+        .focusEffectDisabled()
         .onKeyPress { press in
             // 统一的键盘事件处理
             if press.key == .init("v") && press.modifiers.contains(.command) {
