@@ -668,6 +668,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
                 // 复用现有的mask layer，只更新path
                 existingMask.path = path.cgPath
+                existingMask.strokeColor = NSColor.clear.cgColor
+                existingMask.lineWidth = 0
+                existingMask.fillColor = NSColor.black.cgColor
+                
+                // 确保没有边框
+                layer.borderWidth = 0
+                layer.borderColor = NSColor.clear.cgColor
 
                 CATransaction.commit()
             } else {
@@ -675,11 +682,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let shapeLayer = CAShapeLayer()
                 shapeLayer.path = path.cgPath
                 shapeLayer.fillRule = .evenOdd
+                shapeLayer.strokeColor = NSColor.clear.cgColor
+                shapeLayer.lineWidth = 0
+                shapeLayer.fillColor = NSColor.black.cgColor
 
                 layer.mask = shapeLayer
                 layer.masksToBounds = true
                 layer.backgroundColor = NSColor.clear.cgColor
                 layer.isOpaque = false
+                
+                // 移除任何可能的边框
+                layer.borderWidth = 0
+                layer.borderColor = NSColor.clear.cgColor
             }
         }
     }
